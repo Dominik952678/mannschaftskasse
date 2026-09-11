@@ -16,8 +16,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── Wer darf was ──────────────────────────────────────────────────────────
--- Wie in 0003, nur um 'loeschen' ergänzt. Dieselbe Liste steht in
--- src/model/berechtigungen.ts.
+-- ACHTUNG: `create or replace` ersetzt die Funktion vollständig. Hier muss
+-- deshalb die KOMPLETTE Rechteliste stehen, nicht nur das neue Recht —
+-- gewachsen über 0003 ('direkt_buchen' bis 'spieltag_abrechnen') und 0004
+-- ('verwalten'). Wer hier die falsche Fassung abschreibt, nimmt still ein
+-- Recht weg; die Prüfung ganz unten in dieser Datei fängt genau das ab.
+-- Dieselbe Liste steht in src/model/berechtigungen.ts.
 
 create or replace function public.darf(p_recht text)
 returns boolean
@@ -39,6 +43,7 @@ begin
     -- Wer das Geld verwaltet, räumt auch wieder auf.
     when 'loeschen'           then v_rolle in ('Kassenwart', 'Admin')
     when 'spieltag_abrechnen' then v_rolle in ('Trainer', 'Admin')
+    when 'verwalten'          then v_rolle = 'Admin'
     else false
   end;
 end;
@@ -107,3 +112,24 @@ revoke execute on function public.strafe_loeschen(uuid) from public, anon;
 revoke execute on function public.strafe_bezahlen(uuid, boolean) from public, anon;
 grant execute on function public.strafe_loeschen(uuid) to authenticated;
 grant execute on function public.strafe_bezahlen(uuid, boolean) to authenticated;
+
+-- ── Nachgezählt ───────────────────────────────────────────────────────────
+-- Ein Recht, das beim Neuschreiben von darf() unter den Tisch fällt, merkt
+-- man erst, wenn jemand vor einer verschlossenen Tür steht. Also lieber hier
+-- laut werden als später in der Kabine.
+
+do $$
+declare
+  v_quelle text := pg_get_functiondef('public.darf(text)'::regprocedure);
+  v_recht  text;
+begin
+  foreach v_recht in array array[
+    'direkt_buchen', 'ablehnen', 'abhaken', 'loeschen', 'spieltag_abrechnen', 'verwalten'
+  ] loop
+    if position('''' || v_recht || '''' in v_quelle) = 0 then
+      raise exception
+        'darf() kennt das Recht "%" nicht mehr — beim Ersetzen verloren gegangen. '
+        'Die Funktion braucht immer die komplette Liste.', v_recht;
+    end if;
+  end loop;
+end $$;
