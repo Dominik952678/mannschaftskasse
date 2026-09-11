@@ -1,11 +1,12 @@
 import wappen from '../assets/tsg-wappen.png'
 import {
-  bezeichnung, geburtstage, letztesSpiel, naechstesSpiel, namen,
+  anstehendeSpiele, bezeichnung, geburtstage, letztesSpiel, namen,
   standProSpieler, summeOffen, wert,
 } from '../model/berechnung'
-import { fmtEur, fmtKiste, fmtKistenZahl, kuerzel, tagKurz, tagMitWochentag, vorname } from '../model/format'
+import { fmtEur, fmtKiste, fmtKistenZahl, tagKurz, tagMitWochentag, vorname } from '../model/format'
 import type { Spiel, Strafe } from '../model/types'
-import { Karte, Kuerzel, Leer, Sektion, Tappable } from '../components/ui'
+import { GegnerLogo } from '../components/GegnerLogo'
+import { Karte, Leer, Sektion, Tappable } from '../components/ui'
 import { useKasse } from '../store/useKasse'
 
 /** Sprüche für die Schandmauer — Platz eins zuerst. */
@@ -42,7 +43,10 @@ export function HomeScreen({ aufProfil }: { aufProfil: () => void }) {
     .slice(0, 6)
 
   const letztes = letztesSpiel(spiele)
-  const naechstes = naechstesSpiel(spiele)
+  const anstehend = anstehendeSpiele(spiele)
+  const naechstes = anstehend[0] ?? null
+  // Das nächste steht in der Karte oben; darunter die Spiele danach.
+  const danach = anstehend.slice(1, 5)
   const gebs = geburtstage(spieler, strafen)
 
   return (
@@ -81,6 +85,24 @@ export function HomeScreen({ aufProfil }: { aufProfil: () => void }) {
         <SpielKarte titel="Letztes Spiel" spiel={letztes} />
         <SpielKarte titel="Nächstes Spiel" spiel={naechstes} />
       </div>
+
+      {danach.length > 0 && (
+        <Sektion titel="Weitere Spiele">
+          {danach.map((sp) => (
+            <div key={sp.id} className="rule-b" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0' }}>
+              <GegnerLogo name={sp.gegner} groesse={30} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="zeile-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sp.gegner}</div>
+                <div className="note">{sp.heim ? 'Heimspiel' : 'Auswärts'}</div>
+              </div>
+              <div style={{ textAlign: 'right', flex: 'none' }}>
+                <div className="cond" style={{ fontSize: 17, lineHeight: 1.1 }}>{tagMitWochentag(sp.datum)}</div>
+                {sp.anstoss && <div className="note">{sp.anstoss} Uhr</div>}
+              </div>
+            </div>
+          ))}
+        </Sektion>
+      )}
 
       <Sektion titel="Schandmauer" hinweis="wer diese Saison am meisten liefert">
         {mauer.length === 0
@@ -147,11 +169,11 @@ function SpielKarte({ titel, spiel }: { titel: string; spiel: Spiel | null }) {
               <>
                 <img src={wappen} alt={kasse.daten.verein.name} style={{ width: 26, height: 26, flex: 'none', objectFit: 'contain' }} />
                 <div className="cond" style={{ fontSize: 24, lineHeight: 1 }}>{spiel.tore} : {spiel.gegentore}</div>
-                <Kuerzel text={kuerzel(spiel.gegner)} groesse={26} />
+                <GegnerLogo name={spiel.gegner} groesse={26} />
               </>
             ) : (
               <>
-                <Kuerzel text={kuerzel(spiel.gegner)} groesse={26} />
+                <GegnerLogo name={spiel.gegner} groesse={26} />
                 <div className="cond" style={{ fontSize: 24, lineHeight: 1 }}>
                   {spiel.anstoss ? tagMitWochentag(spiel.datum).slice(0, 2) + ' ' + spiel.anstoss : tagKurz(spiel.datum)}
                 </div>

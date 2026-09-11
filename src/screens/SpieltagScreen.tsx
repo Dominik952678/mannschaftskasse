@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import wappen from '../assets/tsg-wappen.png'
 import { naechstesSpiel } from '../model/berechnung'
-import { fmtEur, heuteIso, kuerzel } from '../model/format'
-import { Karte, Kuerzel, Leer, Sektion, Tappable } from '../components/ui'
+import { fmtEur, heuteIso } from '../model/format'
+import { GegnerLogo } from '../components/GegnerLogo'
+import { Karte, Leer, Sektion, Tappable } from '../components/ui'
 import { useKasse } from '../store/useKasse'
 
 /**
@@ -133,7 +134,7 @@ function Seite({ name, bild, zahl, aufAb, was }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         {bild
           ? <img src={bild} alt="" style={{ width: 24, height: 24, flex: 'none', objectFit: 'contain', background: '#fff', padding: 1 }} />
-          : <Kuerzel text={kuerzel(name)} groesse={24} aktiv />}
+          : <GegnerLogo name={name} groesse={24} aufAccent />}
         <div className="cond" style={{ fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name}
         </div>

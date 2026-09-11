@@ -12,7 +12,7 @@ import type { Einheit, KasseDaten } from '../model/types'
 import { KasseContext } from './context'
 import type { KasseStore, Ladezustand } from './context'
 
-const LEER: KasseDaten = { ...ANFANGSDATEN, spieler: [], strafen: [], spiele: [] }
+const LEER: KasseDaten = { ...ANFANGSDATEN, spieler: [], strafen: [], spiele: [], gegner: [] }
 
 function fehlertext(e: unknown) {
   if (e instanceof Error && e.message) return e.message
@@ -93,6 +93,13 @@ export function KasseProvider({ sitzung, children }: { sitzung: Sitzung; childre
       setLadezustand('laedt')
       setLadefehler(null)
       setVersuch((n) => n + 1)
+    },
+    aktualisieren: async () => {
+      try {
+        setDaten(await repository.laden())
+      } catch (e) {
+        melde(fehlertext(e))
+      }
     },
 
     ich, kassenwart, trainer, rolle, darf,

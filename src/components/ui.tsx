@@ -80,6 +80,15 @@ export function Tappable({ onClick, className, style, label, gedrueckt, children
   )
 }
 
+/** Zurück-Link oben in Unteransichten. */
+export function Zurueck({ text, onClick }: { text: string; onClick: () => void }) {
+  return (
+    <Tappable className="zurueck" onClick={onClick} label={'Zurück zu ' + text}>
+      ‹ {text}
+    </Tappable>
+  )
+}
+
 /** Quadratisches Kürzel-Feld, das überall dort steht, wo ein Wappen fehlt. */
 export function Kuerzel({ text, groesse, aktiv = false }: { text: string; groesse: number; aktiv?: boolean }) {
   return (

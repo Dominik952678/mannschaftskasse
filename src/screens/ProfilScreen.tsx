@@ -4,7 +4,7 @@ import type { Strafe } from '../model/types'
 import { Karte, Leer, Tappable } from '../components/ui'
 import { useKasse } from '../store/useKasse'
 
-export function ProfilScreen({ aufZahlen }: { aufZahlen: () => void }) {
+export function ProfilScreen({ aufZahlen, aufVerwaltung }: { aufZahlen: () => void; aufVerwaltung: () => void }) {
   const kasse = useKasse()
   const { strafen } = kasse.daten
   const ich = kasse.ich
@@ -42,6 +42,21 @@ export function ProfilScreen({ aufZahlen }: { aufZahlen: () => void }) {
           {untertitel && <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{untertitel}</div>}
         </div>
       </div>
+
+      {kasse.darf.verwalten && (
+        <Tappable
+          className="hover-accent-100"
+          onClick={aufVerwaltung}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: '1px solid var(--color-accent)' }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="kicker">Admin</div>
+            <div className="cond" style={{ fontSize: 20, lineHeight: 1.15 }}>Verwaltung</div>
+            <div className="note">Kader, Rollen und Codes</div>
+          </div>
+          <span className="cond aktion">Öffnen</span>
+        </Tappable>
+      )}
 
       <div className="paar">
         <Karte style={{ flex: 1, minWidth: 0, padding: 12 }}>
@@ -81,7 +96,7 @@ export function ProfilScreen({ aufZahlen }: { aufZahlen: () => void }) {
       </Karte>
 
       <Karte style={{ padding: '12px 14px' }}>
-        <div className="kicker" style={{ marginBottom: 6 }}>Angemeldet als {ich.rolle}</div>
+        <div className="kicker" style={{ marginBottom: 6 }}>Angemeldet als {kasse.rolle}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--color-neutral-700)' }}>
             {ich.name} · dieses Gerät bleibt angemeldet, bis du dich abmeldest.

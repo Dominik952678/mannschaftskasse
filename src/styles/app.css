@@ -273,3 +273,44 @@
   font-size: 13px; text-align: center;
   color: var(--color-neutral-600);
 }
+
+/* ── Verwaltung ────────────────────────────────────────────────────────── */
+
+.zurueck {
+  align-self: flex-start;
+  margin: -2px 0 -8px -4px;
+  padding: 6px 8px 6px 4px;
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-accent-700);
+}
+
+/* Der Code — groß genug, um ihn vom Handy abzulesen und abzutippen. */
+.code-gross {
+  font-size: 56px; line-height: 1; letter-spacing: 0.14em;
+  margin-top: 6px;
+  color: var(--color-accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Knöpfe auf der blauen Karte. */
+.knopf-gelb {
+  background: var(--color-accent-2); color: var(--color-accent-900);
+  border-color: var(--color-accent-2); padding: 11px 14px; font-size: 15px;
+}
+.knopf-hell {
+  background: transparent; color: #fff;
+  border-color: rgba(255, 255, 255, 0.45); padding: 11px 14px; font-size: 15px;
+}
+@media (hover: hover) {
+  .knopf-gelb:hover { background: var(--color-accent-2-300); }
+  .knopf-hell:hover { background: rgba(255, 255, 255, 0.1); }
+}
+
+.formfehler {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-accent-100);
+  font-size: 13px; color: var(--color-accent-900);
+}

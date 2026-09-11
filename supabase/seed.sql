@@ -1,8 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  Mannschaftskasse — Daten einpflegen
 --
---  Nach 0001_schema.sql und 0002_codes_automatisch.sql im SQL-Editor
---  von Supabase ausführen.
+--  Nach den Migrationen 0001–0005 im SQL-Editor von Supabase ausführen —
+--  als eigener Lauf, nicht zusammen mit ihnen.
+--
+--  Für die Erstbefüllung gedacht. Danach geht alles, was hier steht, auch
+--  in der App: als Admin unter Profil → Verwaltung.
 --
 --  • Zeilen, die mit BEISPIEL anfangen, werden übersprungen. Lass sie als
 --    Vorlage stehen und schreib deine Zeilen darunter.
@@ -25,7 +28,8 @@ on conflict (id) do update
 
 
 -- ── 2 · Kader ─────────────────────────────────────────────────────────────
---  rolle:      'Spieler', 'Kassenwart' oder 'Trainer' — genau so geschrieben
+--  rolle:      'Spieler', 'Kassenwart', 'Trainer' oder 'Admin' — genau so
+--              geschrieben. Admin darf alles und bleibt trotzdem im Kader.
 --  nr:         Trikotnummer; nr, position und geburtstag dürfen null sein
 --  geburtstag: 'MM-TT', also '03-14' für den 14. März
 --
@@ -173,6 +177,8 @@ order by s.name;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 --  Später — einzeln markieren und mit "Run selected" ausführen
+--  Das meiste davon geht bequemer in der App: Profil → Verwaltung.
+--  Hier bleibt es für den Notfall, etwa wenn es keinen Admin mehr gibt.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Code eines Spielers nachschauen:
@@ -186,6 +192,10 @@ order by s.name;
 -- Nur die Sperre aufheben, Code bleibt:
 --   update public.spieler_geheim set fehlversuche = 0, gesperrt_bis = null
 --   where spieler_id = (select id from public.spieler where name = 'Anna A');
+
+-- Dich selbst zum Admin machen (voller Zugriff in der App):
+--   update public.spieler set rolle = 'Admin' where name = 'Dein Name';
+-- Danach die App einmal neu laden — die Rolle kommt beim Start frisch mit.
 
 -- Rolle wechseln (z. B. neuer Kassenwart — den alten dann zurück auf 'Spieler'):
 --   update public.spieler set rolle = 'Kassenwart' where name = 'Anna A';

@@ -11,6 +11,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { KasseScreen } from './screens/KasseScreen'
 import { ProfilScreen, ZahlenSheet } from './screens/ProfilScreen'
 import { SpieltagScreen } from './screens/SpieltagScreen'
+import { VerwaltungScreen } from './screens/VerwaltungScreen'
 import { KasseProvider } from './store/KasseProvider'
 import { useKasse } from './store/useKasse'
 
@@ -63,13 +64,18 @@ function Hinweisschirm({ text, children }: { text: string; children?: React.Reac
  * darüber liegt. Alles in einer Spalte, die genau den Bildschirm füllt;
  * gescrollt wird nur in der Mitte.
  */
+/** Die Tabs plus die Verwaltung, die man übers Profil erreicht. */
+type Ansicht = TabId | 'verwaltung'
+
 function Huelle() {
   const kasse = useKasse()
-  const [tab, setTab] = useState<TabId>('home')
+  const [ansicht, setAnsicht] = useState<Ansicht>('home')
   const [zahlenOffen, setZahlenOffen] = useState(false)
 
-  // Den Spieltag rechnet nur der Trainer ab.
-  const aktiv: TabId = tab === 'spieltag' && !kasse.darf.spieltagAbrechnen ? 'home' : tab
+  // Spieltag nur für Trainer und Admin, die Verwaltung nur für den Admin.
+  const verboten = (ansicht === 'spieltag' && !kasse.darf.spieltagAbrechnen)
+    || (ansicht === 'verwaltung' && !kasse.darf.verwalten)
+  const aktiv: Ansicht = verboten ? 'home' : ansicht
 
   useEffect(() => {
     if (!zahlenOffen) return
@@ -78,8 +84,8 @@ function Huelle() {
     return () => window.removeEventListener('keydown', aufTaste)
   }, [zahlenOffen])
 
-  function wechsle(ziel: TabId) {
-    setTab(ziel)
+  function wechsle(ziel: Ansicht) {
+    setAnsicht(ziel)
     setZahlenOffen(false)
   }
 
@@ -106,11 +112,18 @@ function Huelle() {
           {aktiv === 'kasse' && <KasseScreen />}
           {aktiv === 'neu' && <EintragenScreen />}
           {aktiv === 'spieltag' && <SpieltagScreen />}
-          {aktiv === 'profil' && <ProfilScreen aufZahlen={() => setZahlenOffen(true)} />}
+          {aktiv === 'profil' && (
+            <ProfilScreen aufZahlen={() => setZahlenOffen(true)} aufVerwaltung={() => wechsle('verwaltung')} />
+          )}
+          {aktiv === 'verwaltung' && <VerwaltungScreen zurueck={() => wechsle('profil')} />}
         </main>
       )}
 
-      <TabLeiste aktiv={aktiv} waehle={wechsle} mitSpieltag={kasse.darf.spieltagAbrechnen} />
+      <TabLeiste
+        aktiv={aktiv === 'verwaltung' ? 'profil' : aktiv}
+        waehle={wechsle}
+        mitSpieltag={kasse.darf.spieltagAbrechnen}
+      />
 
       {zahlenOffen && <ZahlenSheet schliessen={() => setZahlenOffen(false)} />}
 

@@ -5,7 +5,12 @@
  * Spieler und kommt beim Anmelden mit — die Oberfläche richtet sich danach,
  * durchgesetzt wird sie in der Datenbank (siehe supabase/migrations).
  */
-export type Rolle = 'Spieler' | 'Kassenwart' | 'Trainer'
+export type Rolle =
+  | 'Spieler'
+  | 'Kassenwart'
+  | 'Trainer'
+  /** Darf alles, was Kassenwart und Trainer dürfen — und bleibt Teil des Kaders. */
+  | 'Admin'
 
 /** Euro und Kisten laufen getrennt und werden nie ineinander umgerechnet. */
 export type Einheit = 'eur' | 'kiste'
@@ -63,6 +68,22 @@ export type Spiel = {
   gegentore?: number
 }
 
+/** Ein Gegner mit Logo. Verknüpft mit dem Spielplan über den Namen. */
+export type Gegner = {
+  name: string
+  logoUrl?: string
+}
+
+/** Ein Spiel, wie die Verwaltung es anlegt oder ändert. Das Ergebnis trägt der Spieltag ein. */
+export type SpielDaten = {
+  /** "JJJJ-MM-TT" */
+  datum: string
+  /** "15:00" */
+  anstoss?: string
+  gegner: string
+  heim: boolean
+}
+
 export type Verein = {
   name: string
   mannschaft: string
@@ -75,6 +96,29 @@ export type KasseDaten = {
   spieler: Spieler[]
   strafen: Strafe[]
   spiele: Spiel[]
+  gegner: Gegner[]
+}
+
+/** Was die Verwaltung über einen Spieler weiß — mit echter Rolle und Code. */
+export type KaderEintrag = {
+  spieler: Spieler
+  code: string
+  fehlversuche: number
+  /** Gesetzt, solange die Anmeldung nach Fehlversuchen gesperrt ist (ISO). */
+  gesperrtBis?: string
+  /** Auf wie vielen Geräten der Spieler gerade angemeldet ist. */
+  geraete: number
+}
+
+/** Stammdaten, wie die Verwaltung sie anlegt oder ändert. */
+export type SpielerDaten = {
+  name: string
+  rolle: Rolle
+  nummer?: number
+  position?: string
+  /** "MM-TT" */
+  geburtstag?: string
+  aktiv: boolean
 }
 
 /** Ein Eintrag aus dem Strafenkatalog: was es kostet und wie es gebucht wird. */

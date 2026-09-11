@@ -1,6 +1,6 @@
 import { KATALOG_BY } from './katalog'
 import { fmtBetrag, geburtstagKurz, heuteIso } from './format'
-import type { Einheit, Spiel, Spieler, Strafe } from './types'
+import type { Einheit, Gegner, Spiel, Spieler, Strafe } from './types'
 
 /** Eine Strafe trifft mehrere: der Betrag gilt dann je Mann. */
 export const istGeteilt = (s: Strafe) => s.spielerIds.length > 1
@@ -68,12 +68,23 @@ export function letztesSpiel(spiele: Spiel[]): Spiel | null {
     .sort((a, b) => b.datum.localeCompare(a.datum))[0] ?? null
 }
 
-/** Das nächste Spiel ohne Ergebnis, das noch nicht vorbei ist. */
-export function naechstesSpiel(spiele: Spiel[]): Spiel | null {
+/** Alle Spiele ohne Ergebnis, die noch nicht vorbei sind — das nächste zuerst. */
+export function anstehendeSpiele(spiele: Spiel[]): Spiel[] {
   const heute = heuteIso()
   return spiele
     .filter((s) => s.tore === undefined && s.datum >= heute)
-    .sort((a, b) => a.datum.localeCompare(b.datum))[0] ?? null
+    .sort((a, b) => a.datum.localeCompare(b.datum) || (a.anstoss ?? '').localeCompare(b.anstoss ?? ''))
+}
+
+/** Das nächste Spiel ohne Ergebnis, das noch nicht vorbei ist. */
+export function naechstesSpiel(spiele: Spiel[]): Spiel | null {
+  return anstehendeSpiele(spiele)[0] ?? null
+}
+
+/** Das Logo zu einem Gegner — gefunden über den Namen, Groß/klein egal. */
+export function logoFuer(gegner: Gegner[], name: string): string | undefined {
+  const n = name.trim().toLowerCase()
+  return gegner.find((g) => g.name.trim().toLowerCase() === n)?.logoUrl
 }
 
 export type GeburtstagInfo = { spieler: Spieler; datum: string; status: 'eingetragen' | 'fällig' | 'offen' }

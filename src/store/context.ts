@@ -12,6 +12,8 @@ export type KasseStore = {
   /** Eine Änderung ist unterwegs zur Ablage. */
   speichert: boolean
   neuLaden: () => void
+  /** Lädt still neu, ohne Ladebildschirm — etwa nach Änderungen in der Verwaltung. */
+  aktualisieren: () => Promise<void>
 
   ich: Spieler | null
   kassenwart: Spieler | null

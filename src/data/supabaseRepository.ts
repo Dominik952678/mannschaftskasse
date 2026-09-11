@@ -81,17 +81,19 @@ export function supabaseRepository(): KasseRepository {
 
     async laden(): Promise<KasseDaten> {
       const sb = client()
-      const [verein, spieler, strafen, spiele] = await Promise.all([
+      const [verein, spieler, strafen, spiele, gegner] = await Promise.all([
         sb.from('verein').select('name, mannschaft, saison').single(),
-        sb.from('spieler').select('id, name, rolle, position, nummer, geburtstag, aktiv').order('name'),
+        // Über die View: Sie zeigt einen Admin als Spieler (0004_verwaltung.sql).
+        sb.from('spieler_kader').select('id, name, rolle, position, nummer, geburtstag, aktiv').order('name'),
         sb.from('strafen').select(
           'id, typ_id, betrag, einheit, datum, status, angelegt_von, notiz,'
           + ' strafe_spieler(spieler_id), strafe_bestaetigungen(spieler_id)',
         ).order('datum', { ascending: false }),
         sb.from('spiele').select('id, datum, anstoss, gegner, heim, tore, gegentore').order('datum'),
+        sb.from('gegner').select('name, logo_pfad'),
       ])
 
-      const fehler = verein.error ?? spieler.error ?? strafen.error ?? spiele.error
+      const fehler = verein.error ?? spieler.error ?? strafen.error ?? spiele.error ?? gegner.error
       if (fehler) throw fehler
 
       // Ohne generierte Datenbanktypen kennt der Client die Form der Zeilen
@@ -101,6 +103,11 @@ export function supabaseRepository(): KasseRepository {
         spieler: (spieler.data as unknown as SpielerZeile[]).map(zuSpieler),
         strafen: (strafen.data as unknown as StrafeZeile[]).map(zuStrafe),
         spiele: (spiele.data as unknown as SpielZeile[]).map(zuSpiel),
+        // Logos liegen im öffentlichen Bucket — die Adresse lässt sich direkt bilden.
+        gegner: (gegner.data as unknown as { name: string; logo_pfad: string | null }[]).map((g) => ({
+          name: g.name,
+          logoUrl: g.logo_pfad ? sb.storage.from('gegner-logos').getPublicUrl(g.logo_pfad).data.publicUrl : undefined,
+        })),
       }
     },
 

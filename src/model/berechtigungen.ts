@@ -3,7 +3,7 @@ import type { Rolle } from './types'
 /**
  * Was eine Rolle darf. Die Oberfläche blendet danach aus, was nicht geht —
  * verlassen darf man sich darauf nicht: dieselben Regeln stehen noch einmal
- * als RLS-Policies in der Datenbank (supabase/migrations/0001_schema.sql).
+ * in der Datenbank, in der Funktion `darf()` (supabase/migrations/0003_admin.sql).
  * Diese Datei ist die Kopie fürs Auge, nicht der Türsteher.
  */
 export type Berechtigungen = {
@@ -18,11 +18,15 @@ export type Berechtigungen = {
   erinnern: boolean
   /** Den Spieltag rechnet der Trainer ab. */
   spieltagAbrechnen: boolean
+  /** Kader, Rollen und Codes pflegen — nur der Admin. */
+  verwalten: boolean
 }
 
 export function berechtigungen(rolle: Rolle): Berechtigungen {
-  const kassenwart = rolle === 'Kassenwart'
-  const trainer = rolle === 'Trainer'
+  // Der Admin darf alles, was Kassenwart und Trainer dürfen.
+  const admin = rolle === 'Admin'
+  const kassenwart = rolle === 'Kassenwart' || admin
+  const trainer = rolle === 'Trainer' || admin
   return {
     antragStellen: true,
     direktBuchen: kassenwart,
@@ -30,5 +34,6 @@ export function berechtigungen(rolle: Rolle): Berechtigungen {
     abhaken: kassenwart,
     erinnern: kassenwart,
     spieltagAbrechnen: trainer,
+    verwalten: admin,
   }
 }

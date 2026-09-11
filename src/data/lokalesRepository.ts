@@ -1,35 +1,30 @@
-import { ANFANGSDATEN } from './anfang'
+import { kopie, speicher } from './lokalerSpeicher'
+import { berechtigungen } from '../model/berechtigungen'
 import { KATALOG_BY } from '../model/katalog'
-import type { Einheit, KasseDaten, Strafe } from '../model/types'
+import { sichtbareRolle } from '../model/spielerEingabe'
+import type { Einheit, Strafe } from '../model/types'
 import type { Sitzung } from '../auth/typen'
 import type { KasseRepository, SpieltagAbrechnung, StrafeNeu } from './repository'
 
 /**
- * Die Kasse im Speicher. Überlebt keinen Reload — genau richtig zum
- * Ausprobieren, solange kein Supabase-Projekt dranhängt.
+ * Die Kasse im Speicher des Browsers (siehe lokalerSpeicher). Überlebt keinen
+ * Reload — genau richtig zum Ausprobieren, solange kein Supabase dranhängt.
  */
-let daten: KasseDaten = strukturKopie(ANFANGSDATEN)
-
-function strukturKopie(d: KasseDaten): KasseDaten {
-  return {
-    verein: { ...d.verein },
-    spieler: d.spieler.map((p) => ({ ...p })),
-    strafen: d.strafen.map((s) => ({ ...s, spielerIds: [...s.spielerIds], bestaetigtVon: [...s.bestaetigtVon] })),
-    spiele: d.spiele.map((s) => ({ ...s })),
-  }
-}
-
 const neueId = () => crypto.randomUUID()
 
 export function lokalesRepository(sitzung: Sitzung): KasseRepository {
-  const istKassenwart = sitzung.rolle === 'Kassenwart'
-  const istTrainer = sitzung.rolle === 'Trainer'
+  // Dieselben Regeln wie in der Datenbank (`darf()`), damit sich beide
+  // Modi gleich verhalten.
+  const darf = berechtigungen(sitzung.rolle)
 
   return {
     quelle: 'lokal',
 
     async laden() {
-      return strukturKopie(daten)
+      // Wie die Datenbank: Andere sehen einen Admin als Spieler.
+      const d = kopie(speicher.daten)
+      d.spieler = d.spieler.map((p) => ({ ...p, rolle: sichtbareRolle(p.rolle) }))
+      return d
     },
 
     async strafenAnlegen(neu: StrafeNeu[]) {
@@ -41,24 +36,24 @@ export function lokalesRepository(sitzung: Sitzung): KasseRepository {
         einheit: n.einheit,
         datum: n.datum,
         notiz: n.notiz,
-        // Der Kassenwart bucht direkt, alle anderen stellen einen Antrag.
-        status: istKassenwart ? 'offen' : 'antrag',
-        bestaetigtVon: istKassenwart ? [sitzung.spielerId] : [],
+        // Kassenwart und Admin buchen direkt, alle anderen stellen einen Antrag.
+        status: darf.direktBuchen ? 'offen' : 'antrag',
+        bestaetigtVon: darf.direktBuchen ? [sitzung.spielerId] : [],
         angelegtVon: sitzung.spielerId,
       }))
-      daten = { ...daten, strafen: daten.strafen.concat(angelegt) }
+      speicher.daten = { ...speicher.daten, strafen: speicher.daten.strafen.concat(angelegt) }
     },
 
     async entscheiden(strafeId, bestaetigen) {
-      if (!bestaetigen && !(istKassenwart || istTrainer)) {
+      if (!bestaetigen && !darf.ablehnen) {
         throw new Error('Ablehnen darf nur der Kassenwart oder der Trainer.')
       }
-      daten = {
-        ...daten,
-        strafen: daten.strafen.map((s): Strafe => {
+      speicher.daten = {
+        ...speicher.daten,
+        strafen: speicher.daten.strafen.map((s): Strafe => {
           if (s.id !== strafeId) return s
           if (!bestaetigen) return { ...s, status: 'abgelehnt' }
-          if (istKassenwart) return { ...s, status: 'offen', bestaetigtVon: [sitzung.spielerId] }
+          if (darf.direktBuchen) return { ...s, status: 'offen', bestaetigtVon: [sitzung.spielerId] }
           const stimmen = s.bestaetigtVon.includes(sitzung.spielerId)
             ? s.bestaetigtVon
             : s.bestaetigtVon.concat([sitzung.spielerId])
@@ -68,10 +63,10 @@ export function lokalesRepository(sitzung: Sitzung): KasseRepository {
     },
 
     async abhaken(spielerId: string, einheit: Einheit) {
-      if (!istKassenwart) throw new Error('Abhaken darf nur der Kassenwart.')
-      daten = {
-        ...daten,
-        strafen: daten.strafen.map((s): Strafe =>
+      if (!darf.abhaken) throw new Error('Abhaken darf nur der Kassenwart.')
+      speicher.daten = {
+        ...speicher.daten,
+        strafen: speicher.daten.strafen.map((s): Strafe =>
           s.einheit === einheit && s.status === 'offen' && s.spielerIds.includes(spielerId)
             ? { ...s, status: 'bezahlt' }
             : s),
@@ -79,7 +74,13 @@ export function lokalesRepository(sitzung: Sitzung): KasseRepository {
     },
 
     async spieltagAbrechnen({ gegner, datum, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
-      if (!istTrainer) throw new Error('Den Spieltag rechnet der Trainer ab.')
+      if (!darf.spieltagAbrechnen) throw new Error('Den Spieltag rechnet der Trainer ab.')
+
+      // Die Tore zahlt der Trainer — auch wenn ein Admin abrechnet.
+      const trainer = speicher.daten.spieler
+        .filter((p) => p.rolle === 'Trainer' && p.aktiv !== false)
+        .sort((a, b) => a.name.localeCompare(b.name))[0]
+      if (tore > 0 && !trainer) throw new Error('Für die Tore fehlt ein Trainer im Kader.')
 
       const neu: Strafe[] = []
       if (gegentore > 0) kaderIds.forEach((id) => neu.push({
@@ -89,21 +90,21 @@ export function lokalesRepository(sitzung: Sitzung): KasseRepository {
         bestaetigtVon: [sitzung.spielerId], angelegtVon: sitzung.spielerId,
         notiz: gegentore + (gegentore === 1 ? ' Gegentor gg. ' : ' Gegentore gg. ') + gegner,
       }))
-      if (tore > 0) neu.push({
-        id: neueId(), spielerIds: [sitzung.spielerId], typId: 'tor',
+      if (tore > 0 && trainer) neu.push({
+        id: neueId(), spielerIds: [trainer.id], typId: 'tor',
         betrag: tore * (KATALOG_BY.tor.satz ?? 1),
         einheit: 'eur', datum, status: 'offen',
         bestaetigtVon: [sitzung.spielerId], angelegtVon: sitzung.spielerId,
         notiz: tore + (tore === 1 ? ' Tor gg. ' : ' Tore gg. ') + gegner,
       })
 
-      const bekannt = daten.spiele.find((s) => s.datum === datum && s.gegner === gegner)
-      daten = {
-        ...daten,
-        strafen: daten.strafen.concat(neu),
+      const bekannt = speicher.daten.spiele.find((s) => s.datum === datum && s.gegner === gegner)
+      speicher.daten = {
+        ...speicher.daten,
+        strafen: speicher.daten.strafen.concat(neu),
         spiele: bekannt
-          ? daten.spiele.map((s) => (s.id === bekannt.id ? { ...s, tore, gegentore } : s))
-          : daten.spiele.concat([{ id: neueId(), datum, gegner, heim: true, tore, gegentore }]),
+          ? speicher.daten.spiele.map((s) => (s.id === bekannt.id ? { ...s, tore, gegentore } : s))
+          : speicher.daten.spiele.concat([{ id: neueId(), datum, gegner, heim: true, tore, gegentore }]),
       }
     },
   }

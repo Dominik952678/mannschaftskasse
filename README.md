@@ -58,6 +58,9 @@ und bei 10 000 Möglichkeiten wäre ein Hash ohnehin in Sekunden durchprobiert.
    - `supabase/migrations/0001_schema.sql` — Tabellen, Policies, Funktionen
    - `supabase/migrations/0002_codes_automatisch.sql` — Codes vergibt
      die Datenbank
+   - `supabase/migrations/0003_admin.sql` — Admin-Rolle
+   - `supabase/migrations/0004_verwaltung.sql` — Verwaltung in der App
+   - `supabase/migrations/0005_spielplan.sql` — Spielplan und Gegner-Logos
    - `supabase/seed.sql` — vorher Kader und Spielplan eintragen; Zeilen mit
      `BEISPIEL` werden übersprungen. Am Ende steht die Liste der Codes zum
      Weiterleiten.
@@ -75,19 +78,53 @@ Der `anon key` darf öffentlich sein: er kommt nur durch die Policies.
 
 Dieselben Regeln stehen zweimal — einmal fürs Auge, einmal als Türsteher:
 
-| | Spieler | Kassenwart | Trainer |
-| --- | --- | --- | --- |
-| Antrag stellen | ✓ | ✓ | ✓ |
-| gilt sofort, ohne Antrag | | ✓ | |
-| Antrag bestätigen | eine Stimme von zwei | allein | eine Stimme von zwei |
-| Antrag ablehnen | | ✓ | ✓ |
-| Zahlung abhaken | | ✓ | |
-| Spieltag abrechnen | | | ✓ |
+| | Spieler | Kassenwart | Trainer | Admin |
+| --- | --- | --- | --- | --- |
+| Antrag stellen | ✓ | ✓ | ✓ | ✓ |
+| gilt sofort, ohne Antrag | | ✓ | | ✓ |
+| Antrag bestätigen | eine Stimme von zwei | allein | eine Stimme von zwei | allein |
+| Antrag ablehnen | | ✓ | ✓ | ✓ |
+| Zahlung abhaken | | ✓ | | ✓ |
+| Spieltag abrechnen | | | ✓ | ✓ |
+
+Admin ist die Summe aus Kassenwart und Trainer und gehört weiter zum Kader:
+Strafen treffen einen Admin wie jeden anderen. Die Tore beim Spieltag
+zahlt immer der Trainer, auch wenn ein Admin abrechnet.
+
+Für alle anderen erscheint ein Admin als ganz normaler Spieler — auf dem
+Anmeldeschirm, im Kader und in der Schnittstelle: Die App liest Spieler
+über die View `spieler_kader`, die die Rolle umschreibt; die Tabelle selbst
+ist für sie gesperrt. Seine echte Rolle bekommt nur der Admin selbst.
+
+## Verwaltung
+
+Admins erreichen sie über **Profil → Verwaltung**; in der Tab-Leiste taucht
+sie nicht auf. Dort:
+
+- Spieler anlegen — der Code wird gewürfelt und gleich angezeigt
+- Name, Rolle, Trikotnummer, Position, Geburtstag ändern, Spieler austragen
+- Code zeigen, **weiterleiten** (Teilen-Menü des Handys, sonst kopieren)
+  und neu würfeln
+- Sperre nach Fehlversuchen aufheben, Spieler auf allen Geräten abmelden
+
+Seine eigene Rolle und seinen Status kann ein Admin nicht ändern, sonst
+sperrt er sich aus. Das erledigt ein anderer Admin oder der SQL-Editor.
+Jede `admin_*`-Funktion prüft selbst, ob der Aufrufer Admin ist.
+
+Im Bereich **Spielplan** legt der Admin Spiele an (Gegner, Datum, Anstoß,
+Heim/Auswärts), ändert und löscht sie und lädt pro Gegner ein Logo hoch.
+Das Logo gehört zum Gegner, nicht zum Spiel. Die App verkleinert jedes Bild
+auf 256 px und macht ein PNG daraus, bevor es in den Storage-Bucket
+`gegner-logos` geht. Der Bucket ist öffentlich lesbar; hochladen und löschen
+dürfen nur Admins (Policies auf `storage.objects`). Alle Angemeldeten sehen
+die Logos auf der Startseite und beim Spieltag. Ergebnisse trägt weiterhin
+der Spieltag ein, zusammen mit den Strafen.
 
 `src/model/berechtigungen.ts` blendet aus, was nicht geht.
-Durchgesetzt wird es in `supabase/migrations/0001_schema.sql`: gelesen wird
-direkt aus den Tabellen, geschrieben ausschließlich über Datenbank­funktionen,
-die die Rolle des Aufrufers prüfen. Auch Einheit und Satz einer Strafe kommen
+Durchgesetzt wird es in der Datenbank: gelesen wird direkt aus den Tabellen,
+geschrieben ausschließlich über Datenbank­funktionen, die über `darf()`
+(`0003_admin.sql`) die Rolle des Aufrufers prüfen. Wer eine Regel ändert,
+ändert beide Stellen. Auch Einheit und Satz einer Strafe kommen
 aus der Tabelle `strafen_typen`, nicht aus dem Browser.
 
 Die Beschriftungen dazu stehen in `src/model/katalog.ts`. Wer den Katalog
@@ -122,10 +159,17 @@ supabase/
   migrations/  Schema, Policies, Anmelde- und Schreibfunktionen
 ```
 
+## Testen
+
+Mit `.env.local` zeigt auch `npm run build` auf die echte Datenbank. Für
+Tests ohne sie die Zugangsdaten beim Bauen leeren:
+
+```bash
+VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run build
+```
+
 ## Was noch fehlt
 
-- Kader, Spielplan und Codes pflegt man bisher im SQL-Editor — eine
-  Verwaltungsansicht für den Kassenwart fehlt
 - echte Erinnerungen (Push oder Mail) und der PayPal-Link, beide in
   `src/store/KasseProvider.tsx` als `TODO` markiert
 - nach jeder Änderung lädt die App alles neu; für Live-Updates zwischen

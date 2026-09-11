@@ -39,11 +39,13 @@ export const ANFANGSDATEN: KasseDaten = {
   spieler: [],
   strafen: [],
   spiele: [],
+  // Gegner-Logos lädt der Admin in der App hoch (Profil → Verwaltung → Spielplan).
+  gegner: [],
 }
 
 /**
- * Der vierstellige Code im lokalen Modus — für alle Profile derselbe.
- * Mit Supabase hat jeder seinen eigenen, von der Datenbank gewürfelten Code,
- * und verglichen wird in der Datenbank; ein Code liegt dann nie im Browser.
+ * Der Entwicklungs-Code: Im lokalen Modus gilt er zusätzlich zum eigenen
+ * Code jedes Spielers (der steht in der Verwaltung), weil die eigenen Codes
+ * bei jedem Reload neu gewürfelt werden. Mit Supabase gibt es ihn nicht.
  */
 export const ENTWICKLUNGS_CODE = '1234'

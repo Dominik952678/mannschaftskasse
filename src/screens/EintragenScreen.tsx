@@ -74,7 +74,7 @@ function Antragsformular() {
       : typ.satz === null
         ? 'Betrag legt der Trainer fest.'
         : kasse.darf.direktBuchen
-          ? 'Du bist Kassenwart — dein Eintrag gilt sofort.'
+          ? 'Dein Eintrag gilt sofort — ohne Antrag.'
           : 'Geht als Antrag raus. Zwei Mitspieler oder der Kassenwart müssen nicken.'
 
   function absenden() {
