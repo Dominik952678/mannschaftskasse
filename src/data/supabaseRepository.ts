@@ -141,6 +141,21 @@ export function supabaseRepository(): KasseRepository {
       if (error) throw error
     },
 
+    async bezahlen(strafeId: string, bezahlt: boolean) {
+      const { error } = await client().rpc('strafe_bezahlen', {
+        p_strafe_id: strafeId,
+        p_bezahlt: bezahlt,
+      })
+      if (error) throw error
+    },
+
+    async loeschen(strafeId: string) {
+      const { error } = await client().rpc('strafe_loeschen', {
+        p_strafe_id: strafeId,
+      })
+      if (error) throw error
+    },
+
     async spieltagAbrechnen({ gegner, datum, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
       const { error } = await client().rpc('spieltag_abrechnen', {
         p_gegner: gegner,

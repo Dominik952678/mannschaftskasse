@@ -128,7 +128,12 @@ function Huelle() {
       {zahlenOffen && <ZahlenSheet schliessen={() => setZahlenOffen(false)} />}
 
       {kasse.toast && (
-        <div className="toast" role="status" aria-live="polite">{kasse.toast}</div>
+        <div className="toast" role="status" aria-live="polite">
+          <span style={{ flex: 1, minWidth: 0 }}>{kasse.toast.text}</span>
+          {kasse.toast.rueckgaengig && (
+            <button className="toast-zurueck" onClick={kasse.toast.rueckgaengig}>Rückgängig</button>
+          )}
+        </div>
       )}
     </div>
   )

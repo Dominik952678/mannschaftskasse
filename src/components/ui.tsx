@@ -158,6 +158,15 @@ export function IconCheck({ size = 15, width = 1.8, opacity = 1 }: { size?: numb
   )
 }
 
+/** Mülleimer — fürs endgültige Rausnehmen, im Unterschied zum Ablehnen (IconClose). */
+export function IconMuell({ size = 15, width = 1.5 }: { size?: number; width?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={width}>
+      <path d="M4 6.5h16M9.5 6.5V4h5v2.5M6.5 6.5l1 13h9l1-13M10 10v6M14 10v6" />
+    </svg>
+  )
+}
+
 export function IconClose({ size = 15, width = 1.5 }: { size?: number; width?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={width}>

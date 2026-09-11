@@ -8,6 +8,7 @@ import type { KaderEintrag } from '../model/types'
 import { Karte, Leer, Sektion, Tappable, Zurueck } from '../components/ui'
 import { SpielFormular, SpielplanListe } from './SpielplanVerwaltung'
 import { useKasse } from '../store/useKasse'
+import { fehlertext } from '../model/fehler'
 
 type Bereich = 'kader' | 'spielplan'
 
@@ -44,7 +45,7 @@ export function VerwaltungScreen({ zurueck }: { zurueck: () => void }) {
     let abgebrochen = false
     repo.kader()
       .then((k) => { if (!abgebrochen) setKader(k) })
-      .catch((e: unknown) => { if (!abgebrochen) setLadefehler(e instanceof Error ? e.message : 'Laden ging nicht.') })
+      .catch((e: unknown) => { if (!abgebrochen) setLadefehler(fehlertext(e, 'Laden ging nicht.')) })
     return () => { abgebrochen = true }
   }, [repo])
 
@@ -62,7 +63,7 @@ export function VerwaltungScreen({ zurueck }: { zurueck: () => void }) {
       if (erfolg) kasse.melde(erfolg(ergebnis))
       return ergebnis
     } catch (e) {
-      kasse.melde(e instanceof Error ? e.message : 'Das hat nicht geklappt.')
+      kasse.melde(fehlertext(e, 'Das hat nicht geklappt.'))
       return undefined
     } finally {
       setBeschaeftigt(false)
@@ -274,7 +275,7 @@ function SpielerAnsicht({ eintrag, frisch, istIch, beschaeftigt, zurueck, speich
       setFormFehler(null)
       void speichern(eingabe)
     } catch (e) {
-      setFormFehler(e instanceof Error ? e.message : 'Eingabe prüfen.')
+      setFormFehler(fehlertext(e, 'Eingabe prüfen.'))
     }
   }
 
@@ -397,7 +398,7 @@ function NeuerSpieler({ beschaeftigt, zurueck, anlegen }: {
       setFormFehler(null)
       void anlegen(eingabe)
     } catch (e) {
-      setFormFehler(e instanceof Error ? e.message : 'Eingabe prüfen.')
+      setFormFehler(fehlertext(e, 'Eingabe prüfen.'))
     }
   }
 

@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // ⚠ Muss exakt so heißen wie der Worker, der schon bei Cloudflare liegt.
+  //   Stimmt der Name nicht, legt `wrangler deploy` kommentarlos einen
+  //   zweiten Worker unter neuer Adresse an.
+  "name": "mannschaftskasse",
+
+  "compatibility_date": "2026-09-11",
+
+  // Kein Worker-Skript: ausgeliefert wird nur, was `npm run build` in dist
+  // legt. Die App kennt keine eigenen Pfade — alles läuft über den Zustand
+  // in React —, aber wer trotzdem eine Unterseite aufruft oder neu lädt,
+  // bekommt so die index.html statt einer 404.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

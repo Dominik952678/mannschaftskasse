@@ -73,6 +73,31 @@ export function lokalesRepository(sitzung: Sitzung): KasseRepository {
       }
     },
 
+    async bezahlen(strafeId: string, bezahlt: boolean) {
+      if (!darf.abhaken) throw new Error('Abhaken darf nur der Kassenwart.')
+      const vorher = speicher.daten.strafen.find((s) => s.id === strafeId)
+      if (!vorher) throw new Error('Diese Strafe gibt es nicht mehr.')
+      if (bezahlt && vorher.status !== 'offen') throw new Error('Nur offene Posten lassen sich abhaken.')
+      if (!bezahlt && vorher.status !== 'bezahlt') throw new Error('Dieser Posten steht nicht als bezahlt.')
+
+      speicher.daten = {
+        ...speicher.daten,
+        strafen: speicher.daten.strafen.map((s): Strafe =>
+          s.id === strafeId ? { ...s, status: bezahlt ? 'bezahlt' : 'offen' } : s),
+      }
+    },
+
+    async loeschen(strafeId: string) {
+      if (!darf.loeschen) throw new Error('Rausnehmen darf nur der Kassenwart.')
+      if (!speicher.daten.strafen.some((s) => s.id === strafeId)) {
+        throw new Error('Diese Strafe gibt es nicht mehr.')
+      }
+      speicher.daten = {
+        ...speicher.daten,
+        strafen: speicher.daten.strafen.filter((s) => s.id !== strafeId),
+      }
+    },
+
     async spieltagAbrechnen({ gegner, datum, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
       if (!darf.spieltagAbrechnen) throw new Error('Den Spieltag rechnet der Trainer ab.')
 

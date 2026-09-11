@@ -36,6 +36,14 @@ export interface KasseRepository {
   entscheiden(strafeId: string, bestaetigen: boolean): Promise<void>
   /** Hakt alles Offene eines Spielers in einer Einheit als bezahlt ab. */
   abhaken(spielerId: string, einheit: Einheit): Promise<void>
+  /**
+   * Hakt einen einzelnen Posten ab — oder nimmt das Häkchen zurück.
+   * Eine geteilte Strafe gilt damit für alle Beteiligten als bezahlt:
+   * der Status hängt an der Strafe, nicht am einzelnen Mann.
+   */
+  bezahlen(strafeId: string, bezahlt: boolean): Promise<void>
+  /** Nimmt einen Posten ganz raus. Endgültig — anders als 'abgelehnt'. */
+  loeschen(strafeId: string): Promise<void>
   spieltagAbrechnen(abrechnung: SpieltagAbrechnung): Promise<void>
 }
 

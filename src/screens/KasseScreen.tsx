@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { geburtstage, offenProSpieler, summeOffen } from '../model/berechnung'
+import type { Posten } from '../model/berechnung'
 import { fmtBetrag, fmtEur, fmtKiste, initialen } from '../model/format'
 import type { Einheit } from '../model/types'
-import { Karte, Leer, Tappable } from '../components/ui'
+import { IconCheck, IconMuell, Karte, Leer, Tappable } from '../components/ui'
 import { useKasse } from '../store/useKasse'
 
 export function KasseScreen() {
@@ -89,17 +90,12 @@ export function KasseScreen() {
               </Tappable>
 
               {auf && (
-                <div style={{ padding: '2px 0 12px 45px', display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {s.posten.map((posten, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                      <span style={{ flex: 1, minWidth: 0, color: 'var(--color-neutral-800)' }}>{posten.text}</span>
-                      <span style={{ color: 'var(--color-neutral-600)', whiteSpace: 'nowrap' }}>{posten.betrag}</span>
-                    </div>
-                  ))}
+                <div style={{ padding: '2px 0 12px 45px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {s.posten.map((posten) => <PostenZeile key={posten.id} posten={posten} />)}
                   {kasse.darf.abhaken && (
                     <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                       <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { kasse.abhaken(id, ansicht); setOffenAuf(null) }}>
-                        Alles bezahlt
+                        Alles abhaken
                       </button>
                       <button className="btn btn-secondary" style={{ flex: 'none' }} onClick={() => kasse.erinnern(id)}>
                         Erinnern
@@ -138,3 +134,66 @@ function Geburtstagsliste() {
     </Karte>
   )
 }
+
+// ── Ein Posten in der Kassenliste ─────────────────────────────────────────
+
+/**
+ * Zeigt den Posten und, für den Kassenwart, zwei Handgriffe: abhaken und
+ * rausnehmen. Rausnehmen fragt vorher nach — die Zeile wird dafür kurz zur
+ * Rückfrage, statt einen Dialog aufzumachen.
+ */
+function PostenZeile({ posten }: { posten: Posten }) {
+  const kasse = useKasse()
+  const [fragt, setFragt] = useState(false)
+
+  if (fragt) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 32 }}>
+        <span style={{ flex: 1, minWidth: 0, color: 'var(--color-neutral-700)' }}>
+          {posten.geteilt ? 'Für alle Beteiligten rausnehmen?' : 'Raus damit? Kommt nicht wieder.'}
+        </span>
+        <button className="btn btn-secondary" style={KNOPF} onClick={() => setFragt(false)}>
+          Doch nicht
+        </button>
+        <button className="btn btn-primary" style={KNOPF} onClick={() => { setFragt(false); kasse.loeschen(posten.id) }}>
+          Raus
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, minHeight: 32 }}>
+      <span style={{ flex: 1, minWidth: 0, color: 'var(--color-neutral-800)' }}>{posten.text}</span>
+      <span style={{ color: 'var(--color-neutral-600)', whiteSpace: 'nowrap' }}>{posten.betrag}</span>
+
+      {kasse.darf.abhaken && (
+        <Tappable
+          className="hover-accent-600"
+          label={'„' + posten.text + '“ abhaken'}
+          onClick={() => kasse.bezahlen(posten.id, true)}
+          style={{ ...QUADRAT, border: '1px solid var(--color-accent)', color: 'var(--color-accent-800)' }}
+        >
+          <IconCheck size={13} width={2} />
+        </Tappable>
+      )}
+      {kasse.darf.loeschen && (
+        <Tappable
+          className="hover-neutral-200"
+          label={'„' + posten.text + '“ rausnehmen'}
+          onClick={() => setFragt(true)}
+          style={{ ...QUADRAT, border: '1px solid var(--color-divider)', color: 'var(--color-neutral-700)' }}
+        >
+          <IconMuell size={13} />
+        </Tappable>
+      )}
+    </div>
+  )
+}
+
+const QUADRAT = {
+  width: 30, height: 30, flex: 'none',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+} as const
+
+const KNOPF = { padding: '5px 10px', fontSize: 13, flex: 'none' } as const

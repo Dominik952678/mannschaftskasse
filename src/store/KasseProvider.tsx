@@ -7,16 +7,18 @@ import { erzeugeRepository } from '../data/repositoryFabrik'
 import type { SpieltagAbrechnung, StrafeNeu } from '../data/repository'
 import { berechtigungen } from '../model/berechtigungen'
 import { KATALOG_BY } from '../model/katalog'
+import { fehlertext as klartext } from '../model/fehler'
 import { fmtEur, heuteIso, vorname } from '../model/format'
 import type { Einheit, KasseDaten } from '../model/types'
 import { KasseContext } from './context'
-import type { KasseStore, Ladezustand } from './context'
+import type { KasseStore, Ladezustand, Toast } from './context'
 
 const LEER: KasseDaten = { ...ANFANGSDATEN, spieler: [], strafen: [], spiele: [], gegner: [] }
 
+/** Was schiefging, im Klartext — und vollständig in die Konsole. */
 function fehlertext(e: unknown) {
-  if (e instanceof Error && e.message) return e.message
-  return 'Das hat die Kasse nicht angenommen. Nochmal versuchen?'
+  console.error(e)
+  return klartext(e, 'Das hat die Kasse nicht angenommen. Nochmal versuchen?')
 }
 
 /**
@@ -35,15 +37,16 @@ export function KasseProvider({ sitzung, children }: { sitzung: Sitzung; childre
   const [ladefehler, setLadefehler] = useState<string | null>(null)
   const [speichert, setSpeichert] = useState(false)
   const [versuch, setVersuch] = useState(0)
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState<Toast | null>(null)
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
-  const melde = useCallback((text: string) => {
+  const melde = useCallback((text: string, rueckgaengig?: () => void) => {
     clearTimeout(toastTimer.current)
-    setToast(text)
-    toastTimer.current = setTimeout(() => setToast(''), 2600)
+    setToast({ text, rueckgaengig })
+    // Wo es etwas zurückzunehmen gibt, bleibt etwas länger Zeit dafür.
+    toastTimer.current = setTimeout(() => setToast(null), rueckgaengig ? 6000 : 2600)
   }, [])
 
   // Der Ladezustand startet auf 'laedt' und wird nur vom Ergebnis bewegt.
@@ -66,12 +69,12 @@ export function KasseProvider({ sitzung, children }: { sitzung: Sitzung; childre
   }, [repository, versuch])
 
   /** Schreiben, neu laden, Bescheid sagen — und bei Ärger nichts verändern. */
-  async function mutieren(aktion: () => Promise<void>, erfolg: string) {
+  async function mutieren(aktion: () => Promise<void>, erfolg: string, rueckgaengig?: () => void) {
     setSpeichert(true)
     try {
       await aktion()
       setDaten(await repository.laden())
-      melde(erfolg)
+      melde(erfolg, rueckgaengig)
     } catch (e) {
       melde(fehlertext(e))
     } finally {
@@ -148,6 +151,30 @@ export function KasseProvider({ sitzung, children }: { sitzung: Sitzung; childre
         () => repository.abhaken(spielerId, einheit),
         (p ? vorname(p.name) : 'Er') + ' hat abgeliefert. Eingetragen.',
       )
+    },
+
+    bezahlen(strafeId: string, bezahlt: boolean) {
+      const posten = daten.strafen.find((s) => s.id === strafeId)
+      void mutieren(
+        () => repository.bezahlen(strafeId, bezahlt),
+        bezahlt
+          // Bei einer geteilten Strafe hängt der Status an der Strafe, nicht
+          // am einzelnen Mann — das Häkchen gilt also für alle Beteiligten.
+          ? (posten && posten.spielerIds.length > 1 ? 'Abgehakt — für beide.' : 'Abgehakt.')
+          : 'Häkchen weg. Steht wieder offen.',
+        // Ein Posten ist schnell danebengetippt. Der Rückweg steht im Toast,
+        // sonst käme man an einen bezahlten Posten gar nicht mehr heran.
+        () => void mutieren(() => repository.bezahlen(strafeId, !bezahlt),
+          bezahlt ? 'Zurückgenommen. Steht wieder offen.' : 'Doch wieder abgehakt.'),
+      )
+    },
+
+    loeschen(strafeId: string) {
+      if (!darf.loeschen) {
+        melde('Rausnehmen darf nur der Kassenwart.')
+        return
+      }
+      void mutieren(() => repository.loeschen(strafeId), 'Raus aus der Kasse. War wohl nichts.')
     },
 
     erinnern(spielerId: string) {

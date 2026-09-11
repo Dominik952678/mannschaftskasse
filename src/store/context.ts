@@ -5,6 +5,9 @@ import type { SpieltagAbrechnung } from '../data/repository'
 
 export type Ladezustand = 'laedt' | 'bereit' | 'fehler'
 
+/** Kurze Rückmeldung unten am Schirm. `rueckgaengig` blendet einen Knopf ein. */
+export type Toast = { text: string; rueckgaengig?: () => void }
+
 export type KasseStore = {
   daten: KasseDaten
   ladezustand: Ladezustand
@@ -26,13 +29,18 @@ export type KasseStore = {
   /** Trifft die Strafe die angemeldete Person? */
   betrifftMich: (s: Strafe) => boolean
 
-  toast: string
-  melde: (text: string) => void
+  /** Was gerade unten eingeblendet ist — samt Rückweg, wo es einen gibt. */
+  toast: Toast | null
+  melde: (text: string, rueckgaengig?: () => void) => void
 
   /** Legt je Spieler einen eigenen Posten an — oder einen geteilten. */
   strafenAnlegen: (spielerIds: string[], typId: string, betrag: number, geteilt?: boolean) => void
   entscheiden: (strafeId: string, bestaetigen: boolean) => void
   abhaken: (spielerId: string, einheit: Einheit) => void
+  /** Einen einzelnen Posten abhaken — oder das Häkchen zurücknehmen. */
+  bezahlen: (strafeId: string, bezahlt: boolean) => void
+  /** Einen Posten ganz rausnehmen. Endgültig. */
+  loeschen: (strafeId: string) => void
   erinnern: (spielerId: string) => void
   spieltagAbrechnen: (abrechnung: SpieltagAbrechnung) => void
   zahlungMelden: (art: 'paypal' | 'bar') => void

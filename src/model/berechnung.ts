@@ -40,7 +40,9 @@ export function standProSpieler(strafen: Strafe[]): Record<string, Stand> {
   return out
 }
 
-export type Posten = { text: string; betrag: string }
+/** Eine Zeile in der Kassenliste. `id` ist die Strafe dahinter — damit
+ *  sich ein einzelner Posten abhaken oder rausnehmen lässt. */
+export type Posten = { id: string; text: string; betrag: string; geteilt: boolean }
 export type OffenerStand = { summe: number; posten: Posten[] }
 
 /** Alles Offene einer Einheit, nach Spieler gebündelt — die Kassenliste. */
@@ -51,7 +53,12 @@ export function offenProSpieler(strafen: Strafe[], einheit: Einheit): Record<str
     .forEach((s) => s.spielerIds.forEach((id) => {
       if (!out[id]) out[id] = { summe: 0, posten: [] }
       out[id].summe += s.betrag
-      out[id].posten.push({ text: bezeichnung(s) + ' · ' + kurzesDatum(s.datum), betrag: wert(s) })
+      out[id].posten.push({
+        id: s.id,
+        text: bezeichnung(s) + ' · ' + kurzesDatum(s.datum),
+        betrag: wert(s),
+        geteilt: istGeteilt(s),
+      })
     }))
   return out
 }

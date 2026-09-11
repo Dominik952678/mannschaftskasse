@@ -4,6 +4,7 @@ import { auth } from './adapter'
 import { AuthContext } from './context'
 import type { AuthKontext, AuthStatus } from './context'
 import type { Profil, Sitzung } from './typen'
+import { fehlertext } from '../model/fehler'
 
 /**
  * Hält die Anmeldung. Beim Start wird eine bestehende Sitzung gesucht;
@@ -37,8 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(liste)
         setStatus('abgemeldet')
       } catch (e) {
+        console.error(e)
         if (abgebrochen) return
-        setFehler(e instanceof Error ? e.message : 'Unbekannter Fehler')
+        setFehler(fehlertext(e, 'Die Kasse ist nicht erreichbar.'))
         setStatus('fehler')
       }
     }

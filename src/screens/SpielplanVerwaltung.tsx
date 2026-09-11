@@ -8,6 +8,7 @@ import { alsSpielEingabe, LEERES_SPIEL, pruefeSpiel } from '../model/spielEingab
 import type { SpielEingabe } from '../model/spielEingabe'
 import type { Spiel, SpielDaten } from '../model/types'
 import { useKasse } from '../store/useKasse'
+import { fehlertext } from '../model/fehler'
 
 // ── Liste ─────────────────────────────────────────────────────────────────
 
@@ -116,7 +117,7 @@ export function SpielFormular({ spiel, beschaeftigt, zurueck, logoAendern, spiel
       const png = await logoVorbereiten(datei)
       setLogo({ art: 'neu', png, vorschau: URL.createObjectURL(png) })
     } catch (e) {
-      setFormFehler(e instanceof Error ? e.message : 'Das Bild ging nicht.')
+      setFormFehler(fehlertext(e, 'Das Bild ging nicht.'))
     } finally {
       setBildLaedt(false)
     }
@@ -128,7 +129,7 @@ export function SpielFormular({ spiel, beschaeftigt, zurueck, logoAendern, spiel
       geprueft = pruefeSpiel(eingabe)
       setFormFehler(null)
     } catch (e) {
-      setFormFehler(e instanceof Error ? e.message : 'Eingabe prüfen.')
+      setFormFehler(fehlertext(e, 'Eingabe prüfen.'))
       return
     }
     // Erst das Logo (es gehört zum Gegner), dann das Spiel. Scheitert das

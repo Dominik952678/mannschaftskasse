@@ -23,5 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+# Lokaler Zwischenstand von wrangler
+.wrangler
+
 # Zugangsdaten
 .env

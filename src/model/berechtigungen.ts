@@ -15,6 +15,8 @@ export type Berechtigungen = {
   ablehnen: boolean
   /** Zahlungen abhaken darf nur, wer das Geld bekommt. */
   abhaken: boolean
+  /** Einen Posten wieder rausnehmen — auch einen längst bestätigten. */
+  loeschen: boolean
   erinnern: boolean
   /** Den Spieltag rechnet der Trainer ab. */
   spieltagAbrechnen: boolean
@@ -32,6 +34,7 @@ export function berechtigungen(rolle: Rolle): Berechtigungen {
     direktBuchen: kassenwart,
     ablehnen: kassenwart || trainer,
     abhaken: kassenwart,
+    loeschen: kassenwart,
     erinnern: kassenwart,
     spieltagAbrechnen: trainer,
     verwalten: admin,

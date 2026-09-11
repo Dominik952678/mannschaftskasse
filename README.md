@@ -61,6 +61,8 @@ und bei 10 000 Möglichkeiten wäre ein Hash ohnehin in Sekunden durchprobiert.
    - `supabase/migrations/0003_admin.sql` — Admin-Rolle
    - `supabase/migrations/0004_verwaltung.sql` — Verwaltung in der App
    - `supabase/migrations/0005_spielplan.sql` — Spielplan und Gegner-Logos
+   - `supabase/migrations/0006_loeschen_und_einzeln.sql` — Posten einzeln
+     abhaken und wieder rausnehmen
    - `supabase/seed.sql` — vorher Kader und Spielplan eintragen; Zeilen mit
      `BEISPIEL` werden übersprungen. Am Ende steht die Liste der Codes zum
      Weiterleiten.
@@ -74,6 +76,29 @@ abmelden steht als Schnipsel am Ende der Datei.
 
 Der `anon key` darf öffentlich sein: er kommt nur durch die Policies.
 
+## Deployen
+
+Die App liegt als Cloudflare Worker mit statischen Assets — `wrangler.jsonc`
+sagt, wie er heißt und dass `dist/` ausgeliefert wird. Jeder Push auf `main`
+baut und lädt hoch, das erledigt `.github/workflows/deploy.yml`.
+
+Vier Secrets braucht der Workflow, unter **GitHub → Settings → Secrets and
+variables → Actions**:
+
+| Secret | Woher |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare → My Profile → API Tokens → Create Token → Vorlage **Edit Cloudflare Workers** |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → Workers & Pages, rechts in der Seitenleiste |
+| `VITE_SUPABASE_URL` | derselbe Wert wie in `.env.local` |
+| `VITE_SUPABASE_ANON_KEY` | derselbe Wert wie in `.env.local` |
+
+Die beiden `VITE_`-Werte werden **beim Bauen** ins Bundle geschrieben, nicht
+zur Laufzeit gelesen. Als Variable im Cloudflare-Dashboard hinterlegt bringen
+sie deshalb nichts — sie müssen bei GitHub liegen. Fehlen sie, bricht der
+Workflow ab, statt eine App auszuliefern, die stumm im lokalen Modus landet.
+
+Von Hand geht es weiterhin mit `npm run build && npx wrangler deploy`.
+
 ## Berechtigungen
 
 Dieselben Regeln stehen zweimal — einmal fürs Auge, einmal als Türsteher:
@@ -84,8 +109,19 @@ Dieselben Regeln stehen zweimal — einmal fürs Auge, einmal als Türsteher:
 | gilt sofort, ohne Antrag | | ✓ | | ✓ |
 | Antrag bestätigen | eine Stimme von zwei | allein | eine Stimme von zwei | allein |
 | Antrag ablehnen | | ✓ | ✓ | ✓ |
-| Zahlung abhaken | | ✓ | | ✓ |
+| Zahlung abhaken — ganzer Stand oder einzelner Posten | | ✓ | | ✓ |
+| Posten wieder rausnehmen | | ✓ | | ✓ |
 | Spieltag abrechnen | | | ✓ | ✓ |
+
+Abgehakt wird in der Kasse: der ganze Stand eines Spielers auf einmal oder
+Posten für Posten. Ein Fehltipper lässt sich über **Rückgängig** im Toast
+zurücknehmen — danach steht der Posten wieder offen. Rausnehmen ist
+endgültig und fragt deshalb vorher nach; für einen laufenden Antrag bleibt
+Ablehnen der bessere Weg, weil er als `abgelehnt` stehen bleibt.
+
+Eine geteilte Strafe hat einen Status für alle Beteiligten. Wer sie abhakt
+oder rausnimmt, tut das für beide — der Status hängt an der Strafe, nicht am
+einzelnen Mann.
 
 Admin ist die Summe aus Kassenwart und Trainer und gehört weiter zum Kader:
 Strafen treffen einen Admin wie jeden anderen. Die Tore beim Spieltag
