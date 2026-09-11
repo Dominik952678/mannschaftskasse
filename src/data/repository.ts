@@ -12,9 +12,9 @@ export type StrafeNeu = {
   notiz?: string
 }
 
+/** Gegner und Datum kommen aus dem Spielplan — gewählt wird nur das Spiel. */
 export type SpieltagAbrechnung = {
-  gegner: string
-  datum: string
+  spielId: string
   tore: number
   gegentore: number
   kaderIds: string[]
@@ -44,6 +44,11 @@ export interface KasseRepository {
   bezahlen(strafeId: string, bezahlt: boolean): Promise<void>
   /** Nimmt einen Posten ganz raus. Endgültig — anders als 'abgelehnt'. */
   loeschen(strafeId: string): Promise<void>
+  /**
+   * Rechnet ein Spiel ab — oder gleicht ein schon abgerechnetes an: Wer neu
+   * im Kader steht, bekommt seinen Posten, wer raus ist, verliert ihn, ein
+   * anderes Ergebnis ändert die Beträge. Bezahlte Posten bleiben bezahlt.
+   */
   spieltagAbrechnen(abrechnung: SpieltagAbrechnung): Promise<void>
 }
 

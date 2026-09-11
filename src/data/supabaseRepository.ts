@@ -14,6 +14,7 @@ type SpielerZeile = {
 type StrafeZeile = {
   id: string; typ_id: string; betrag: number | string; einheit: Einheit
   datum: string; status: Status; angelegt_von: string | null; notiz: string | null
+  spiel_id: string | null
   strafe_spieler: { spieler_id: string }[]
   strafe_bestaetigungen: { spieler_id: string }[]
 }
@@ -21,6 +22,7 @@ type StrafeZeile = {
 type SpielZeile = {
   id: string; datum: string; anstoss: string | null; gegner: string
   heim: boolean; tore: number | null; gegentore: number | null
+  spiel_kader: { spieler_id: string }[]
 }
 
 function client() {
@@ -50,6 +52,7 @@ function zuStrafe(z: StrafeZeile): Strafe {
     bestaetigtVon: z.strafe_bestaetigungen.map((v) => v.spieler_id),
     angelegtVon: z.angelegt_von ?? undefined,
     notiz: z.notiz ?? undefined,
+    spielId: z.spiel_id ?? undefined,
   }
 }
 
@@ -60,6 +63,7 @@ function zuSpiel(z: SpielZeile): Spiel {
     anstoss: z.anstoss ? z.anstoss.slice(0, 5) : undefined,
     tore: z.tore ?? undefined,
     gegentore: z.gegentore ?? undefined,
+    kader: z.spiel_kader.map((v) => v.spieler_id),
   }
 }
 
@@ -86,10 +90,10 @@ export function supabaseRepository(): KasseRepository {
         // Über die View: Sie zeigt einen Admin als Spieler (0004_verwaltung.sql).
         sb.from('spieler_kader').select('id, name, rolle, position, nummer, geburtstag, aktiv').order('name'),
         sb.from('strafen').select(
-          'id, typ_id, betrag, einheit, datum, status, angelegt_von, notiz,'
+          'id, typ_id, betrag, einheit, datum, status, angelegt_von, notiz, spiel_id,'
           + ' strafe_spieler(spieler_id), strafe_bestaetigungen(spieler_id)',
         ).order('datum', { ascending: false }),
-        sb.from('spiele').select('id, datum, anstoss, gegner, heim, tore, gegentore').order('datum'),
+        sb.from('spiele').select('id, datum, anstoss, gegner, heim, tore, gegentore, spiel_kader(spieler_id)').order('datum'),
         sb.from('gegner').select('name, logo_pfad'),
       ])
 
@@ -156,10 +160,9 @@ export function supabaseRepository(): KasseRepository {
       if (error) throw error
     },
 
-    async spieltagAbrechnen({ gegner, datum, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
+    async spieltagAbrechnen({ spielId, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
       const { error } = await client().rpc('spieltag_abrechnen', {
-        p_gegner: gegner,
-        p_datum: datum,
+        p_spiel_id: spielId,
         p_tore: tore,
         p_gegentore: gegentore,
         p_kader: kaderIds,

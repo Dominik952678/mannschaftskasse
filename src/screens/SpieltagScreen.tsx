@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import wappen from '../assets/tsg-wappen.png'
-import { naechstesSpiel } from '../model/berechnung'
-import { fmtEur, heuteIso } from '../model/format'
+import { spieltagVorschlag } from '../model/berechnung'
+import { fmtEur, tagMitWochentag } from '../model/format'
+import type { Spiel } from '../model/types'
 import { GegnerLogo } from '../components/GegnerLogo'
 import { Karte, Leer, Sektion, Tappable } from '../components/ui'
 import { useKasse } from '../store/useKasse'
@@ -9,48 +10,111 @@ import { useKasse } from '../store/useKasse'
 /**
  * Der Trainer trägt Ergebnis und Kader ein — die Kasse verteilt die
  * Gegentore auf den Kader und die eigenen Tore auf den Trainer.
+ *
+ * Das Spiel kommt aus dem Spielplan. Ein schon abgerechnetes lässt sich
+ * wieder aufrufen und ändern; die Kasse wird dann angeglichen.
  */
 export function SpieltagScreen() {
+  const { spiele } = useKasse().daten
+
+  // Einmal vorgeschlagen, bleibt das Spiel gewählt — auch wenn es nach dem
+  // Abrechnen nicht mehr der Vorschlag wäre.
+  const [gewaehlt, setGewaehlt] = useState(() => spieltagVorschlag(spiele)?.id)
+  const spiel = spiele.find((s) => s.id === gewaehlt) ?? spieltagVorschlag(spiele)
+
+  if (!spiel) {
+    return (
+      <div className="stapel" style={{ gap: 18 }}>
+        <Kopf abgerechnet={false} />
+        <Leer>
+          Noch kein Spiel im Spielplan. Den pflegt der Admin unter Profil → Verwaltung → Spielplan.
+        </Leer>
+      </div>
+    )
+  }
+
+  // Ein anderes Spiel fängt mit seinen eigenen Werten frisch an.
+  return <Abrechnung key={spiel.id} spiel={spiel} waehle={setGewaehlt} />
+}
+
+function Kopf({ abgerechnet }: { abgerechnet: boolean }) {
+  return (
+    <section>
+      <h2 className="sec-title" style={{ marginBottom: 3 }}>
+        {abgerechnet ? 'Spieltag ändern' : 'Spieltag abrechnen'}
+      </h2>
+      <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
+        {abgerechnet
+          ? 'Schon abgerechnet. Was du hier änderst, gleicht die Kasse an.'
+          : 'Kader setzen, Ergebnis eintragen — den Rest rechnet die Kasse.'}
+      </div>
+    </section>
+  )
+}
+
+function Abrechnung({ spiel, waehle }: { spiel: Spiel; waehle: (id: string) => void }) {
   const kasse = useKasse()
-  const { spieler, spiele, verein } = kasse.daten
+  const { spieler, spiele, strafen, verein } = kasse.daten
 
-  const anstehend = naechstesSpiel(spiele)
-  const kaderfaehig = spieler.filter((p) => p.rolle !== 'Trainer' && p.aktiv !== false)
+  const abgerechnet = spiel.tore !== undefined
+  const gespeichert = spiel.kader ?? []
 
-  const [gegner, setGegner] = useState(anstehend?.gegner ?? '')
-  const [datum, setDatum] = useState(anstehend?.datum ?? heuteIso())
-  const [tore, setTore] = useState(0)
-  const [gegentore, setGegentore] = useState(0)
-  const [kaderIds, setKaderIds] = useState<string[]>(() => kaderfaehig.map((p) => p.id))
+  // Wer beim Spiel dabei war, bleibt wählbar — auch wenn er inzwischen
+  // ausgetreten ist. Nur so lässt er sich wieder herausnehmen.
+  const auswahl = spieler.filter((p) =>
+    gespeichert.includes(p.id) || (p.rolle !== 'Trainer' && p.aktiv !== false))
+
+  const [tore, setTore] = useState(spiel.tore ?? 0)
+  const [gegentore, setGegentore] = useState(spiel.gegentore ?? 0)
+  const [kaderIds, setKaderIds] = useState<string[]>(() =>
+    abgerechnet ? gespeichert : auswahl.map((p) => p.id))
 
   const kaderN = kaderIds.length
   const summeKader = gegentore * 0.5 * kaderN
 
+  const dazu = kaderIds.filter((id) => !gespeichert.includes(id))
+  const raus = gespeichert.filter((id) => !kaderIds.includes(id))
+  const ergebnisAnders = tore !== spiel.tore || gegentore !== spiel.gegentore
+  const geaendert = !abgerechnet || ergebnisAnders || dazu.length > 0 || raus.length > 0
+
+  // Bezahlte Posten bleiben bezahlt, auch wenn sich ihr Betrag ändert oder
+  // sie wegfallen — das Geld muss dann der Kassenwart geraderücken.
+  const bezahltBetroffen = abgerechnet
+    ? strafen.filter((s) => s.spielId === spiel.id && s.status === 'bezahlt' && (
+      s.typId === 'gegentor'
+        ? gegentore !== spiel.gegentore || s.spielerIds.some((id) => !kaderIds.includes(id))
+        : s.typId === 'tor' && tore !== spiel.tore))
+    : []
+
+  const name = (id: string) => kasse.spielerVonId(id)?.name ?? '?'
+  const liste = (ids: string[]) => [...new Set(ids)].map(name).join(', ')
+
+  const offen = spiele
+    .filter((s) => s.tore === undefined)
+    .sort((a, b) => a.datum.localeCompare(b.datum))
+  const erledigt = spiele
+    .filter((s) => s.tore !== undefined)
+    .sort((a, b) => b.datum.localeCompare(a.datum))
+
   return (
     <div className="stapel" style={{ gap: 18 }}>
 
-      <section>
-        <h2 className="sec-title" style={{ marginBottom: 3 }}>Spieltag abrechnen</h2>
-        <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
-          Kader setzen, Ergebnis eintragen — den Rest rechnet die Kasse.
-        </div>
-      </section>
+      <Kopf abgerechnet={abgerechnet} />
 
-      <div className="paar">
-        <div className="field" style={{ flex: 1, minWidth: 0 }}>
-          <label htmlFor="sg-gegner">Gegner</label>
-          <input
-            id="sg-gegner" className="input" type="text" placeholder="z. B. FV Engers II"
-            value={gegner} onChange={(e) => setGegner(e.target.value)}
-          />
-        </div>
-        <div className="field" style={{ flex: 1, minWidth: 0 }}>
-          <label htmlFor="sg-datum">Datum</label>
-          <input
-            id="sg-datum" className="input" type="date" style={{ minWidth: 0 }}
-            value={datum} onChange={(e) => setDatum(e.target.value)}
-          />
-        </div>
+      <div className="field">
+        <label htmlFor="sg-spiel">Spiel</label>
+        <select id="sg-spiel" className="input" value={spiel.id} onChange={(e) => waehle(e.target.value)}>
+          {offen.length > 0 && (
+            <optgroup label="Noch nicht abgerechnet">
+              {offen.map((s) => <option key={s.id} value={s.id}>{spielText(s)}</option>)}
+            </optgroup>
+          )}
+          {erledigt.length > 0 && (
+            <optgroup label="Abgerechnet — zum Ändern">
+              {erledigt.map((s) => <option key={s.id} value={s.id}>{spielText(s)}</option>)}
+            </optgroup>
+          )}
+        </select>
       </div>
 
       <Karte className="auf-accent" style={{ padding: '14px 16px' }}>
@@ -64,7 +128,7 @@ export function SpieltagScreen() {
             was="Tor"
           />
           <Seite
-            name={gegner || 'Gegner'}
+            name={spiel.gegner}
             zahl={gegentore}
             aufAb={(d) => setGegentore((n) => Math.max(0, n + d))}
             was="Gegentor"
@@ -72,12 +136,17 @@ export function SpieltagScreen() {
         </div>
       </Karte>
 
-      <Sektion titel="Spieltagskader" hinweis={kaderfaehig.length ? `${kaderN} von ${kaderfaehig.length} markiert` : undefined}>
-        {kaderfaehig.length === 0 ? (
+      <Sektion titel="Spieltagskader" hinweis={auswahl.length ? `${kaderN} von ${auswahl.length} markiert` : undefined}>
+        {abgerechnet && gespeichert.length === 0 && (
+          <div className="note" style={{ marginBottom: 8 }}>
+            Zu diesem Spiel ist kein Kader gespeichert. Markier, wer dabei war.
+          </div>
+        )}
+        {auswahl.length === 0 ? (
           <Leer>Noch kein Kader hinterlegt.</Leer>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {kaderfaehig.map((p) => {
+            {auswahl.map((p) => {
               const an = kaderIds.includes(p.id)
               return (
                 <Tappable
@@ -106,12 +175,27 @@ export function SpieltagScreen() {
           text={`${tore} ${tore === 1 ? 'Tor' : 'Tore'} × 1 € — zahlt der Trainer`}
           betrag={fmtEur(tore)}
         />
+
+        {abgerechnet && (dazu.length > 0 || raus.length > 0) && (
+          <div style={{ fontSize: 12, marginTop: 10, lineHeight: 1.45 }}>
+            {dazu.length > 0 && <div>Neu im Kader: {liste(dazu)}</div>}
+            {raus.length > 0 && <div>Raus: {liste(raus)} — deren Posten fallen weg.</div>}
+          </div>
+        )}
+        {bezahltBetroffen.length > 0 && (
+          <div style={{ fontSize: 12, marginTop: 8, lineHeight: 1.45, color: 'var(--color-accent-800)' }}>
+            Schon bezahlt: {liste(bezahltBetroffen.flatMap((s) => s.spielerIds))}. Der Posten ändert sich
+            trotzdem und bleibt als bezahlt stehen — die Differenz klärt der Kassenwart.
+          </div>
+        )}
+
         <button
           className="btn btn-primary btn-block"
           style={{ padding: 13, fontSize: 15, marginTop: 12 }}
-          onClick={() => kasse.spieltagAbrechnen({ gegner, datum, tore, gegentore, kaderIds })}
+          disabled={kasse.speichert || !geaendert}
+          onClick={() => kasse.spieltagAbrechnen({ spielId: spiel.id, tore, gegentore, kaderIds })}
         >
-          Spieltag abrechnen
+          {abgerechnet ? (geaendert ? 'Änderungen speichern' : 'Nichts geändert') : 'Spieltag abrechnen'}
         </button>
         <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 8 }}>
           Vom Trainer abgerechnet — gilt sofort, ohne Antrag. Kisten bleiben davon unberührt.
@@ -120,6 +204,12 @@ export function SpieltagScreen() {
 
     </div>
   )
+}
+
+/** "So 14.09. · gg. FV Engers II", mit Ergebnis dahinter, wenn es eins gibt. */
+function spielText(s: Spiel) {
+  const text = tagMitWochentag(s.datum) + ' · ' + (s.heim ? 'gg. ' : 'bei ') + s.gegner
+  return s.tore !== undefined ? `${text} · ${s.tore}:${s.gegentore ?? 0}` : text
 }
 
 function Seite({ name, bild, zahl, aufAb, was }: {

@@ -88,6 +88,19 @@ export function naechstesSpiel(spiele: Spiel[]): Spiel | null {
   return anstehendeSpiele(spiele)[0] ?? null
 }
 
+/**
+ * Welches Spiel die Spieltagsseite vorschlägt: das jüngste, das gespielt,
+ * aber noch nicht abgerechnet ist — abgerechnet wird ja meist hinterher.
+ * Sonst das nächste, und wenn alles durch ist, das zuletzt abgerechnete.
+ */
+export function spieltagVorschlag(spiele: Spiel[]): Spiel | null {
+  const heute = heuteIso()
+  const gespielt = spiele
+    .filter((s) => s.tore === undefined && s.datum <= heute)
+    .sort((a, b) => b.datum.localeCompare(a.datum))[0]
+  return gespielt ?? naechstesSpiel(spiele) ?? letztesSpiel(spiele)
+}
+
 /** Das Logo zu einem Gegner — gefunden über den Namen, Groß/klein egal. */
 export function logoFuer(gegner: Gegner[], name: string): string | undefined {
   const n = name.trim().toLowerCase()

@@ -18,7 +18,7 @@ export function kopie(d: KasseDaten): KasseDaten {
     verein: { ...d.verein },
     spieler: d.spieler.map((p) => ({ ...p })),
     strafen: d.strafen.map((s) => ({ ...s, spielerIds: [...s.spielerIds], bestaetigtVon: [...s.bestaetigtVon] })),
-    spiele: d.spiele.map((s) => ({ ...s })),
+    spiele: d.spiele.map((s) => ({ ...s, kader: s.kader && [...s.kader] })),
     gegner: d.gegner.map((g) => ({ ...g })),
   }
 }

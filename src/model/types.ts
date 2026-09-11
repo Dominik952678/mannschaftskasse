@@ -53,6 +53,8 @@ export type Strafe = {
   angelegtVon?: string
   /** Überschreibt den Katalogtext, z. B. "2 Gegentore gg. SV Rengsdorf". */
   notiz?: string
+  /** Das Spiel, aus dessen Abrechnung der Posten stammt (Gegentore, Tore). */
+  spielId?: string
 }
 
 export type Spiel = {
@@ -66,6 +68,8 @@ export type Spiel = {
   /** Solange kein Ergebnis eingetragen ist, gilt das Spiel als anstehend. */
   tore?: number
   gegentore?: number
+  /** Wer beim Abrechnen im Spieltagskader stand (Spieler-IDs). */
+  kader?: string[]
 }
 
 /** Ein Gegner mit Logo. Verknüpft mit dem Spielplan über den Namen. */

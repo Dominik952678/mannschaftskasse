@@ -89,47 +89,83 @@ export function lokalesRepository(sitzung: Sitzung): KasseRepository {
 
     async loeschen(strafeId: string) {
       if (!darf.loeschen) throw new Error('Rausnehmen darf nur der Kassenwart.')
-      if (!speicher.daten.strafen.some((s) => s.id === strafeId)) {
-        throw new Error('Diese Strafe gibt es nicht mehr.')
-      }
+      const weg = speicher.daten.strafen.find((s) => s.id === strafeId)
+      if (!weg) throw new Error('Diese Strafe gibt es nicht mehr.')
+
+      // Ein Gegentor-Posten gehört zu einem Mann im Spieltagskader — wer ihn
+      // rausnimmt, nimmt den Mann aus dem Kader (wie strafe_loeschen in 0008).
+      const ausDemKader = weg.typId === 'gegentor' && weg.spielId ? weg.spielerIds[0] : undefined
       speicher.daten = {
         ...speicher.daten,
         strafen: speicher.daten.strafen.filter((s) => s.id !== strafeId),
+        spiele: speicher.daten.spiele.map((s) => (s.id === weg.spielId && ausDemKader
+          ? { ...s, kader: s.kader?.filter((id) => id !== ausDemKader) }
+          : s)),
       }
     },
 
-    async spieltagAbrechnen({ gegner, datum, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
+    async spieltagAbrechnen({ spielId, tore, gegentore, kaderIds }: SpieltagAbrechnung) {
       if (!darf.spieltagAbrechnen) throw new Error('Den Spieltag rechnet der Trainer ab.')
+      if (tore < 0 || gegentore < 0) throw new Error('Das Ergebnis stimmt so nicht.')
+      const kader = [...new Set(kaderIds)]
+      if (!kader.length) throw new Error('Ohne Kader keine Abrechnung.')
+      if (kader.some((id) => !speicher.daten.spieler.some((p) => p.id === id))) {
+        throw new Error('Einen aus dem Kader gibt es nicht mehr.')
+      }
+      const spiel = speicher.daten.spiele.find((s) => s.id === spielId)
+      if (!spiel) throw new Error('Dieses Spiel gibt es nicht mehr.')
+
+      const betragGeg = gegentore * (KATALOG_BY.gegentor.satz ?? 0.5)
+      const betragTor = tore * (KATALOG_BY.tor.satz ?? 1)
+      const notizGeg = gegentore + (gegentore === 1 ? ' Gegentor gg. ' : ' Gegentore gg. ') + spiel.gegner
+      const notizTor = tore + (tore === 1 ? ' Tor gg. ' : ' Tore gg. ') + spiel.gegner
+
+      // Wie in der Datenbank: Wer dabei bleibt, behält seinen Posten samt
+      // Status. Je Mann bleibt einer — ein bezahlter zuerst.
+      const alt = speicher.daten.strafen
+      const vomSpiel = (typId: string) => alt
+        .filter((s) => s.spielId === spielId && s.typId === typId)
+        .sort((a, b) => Number(b.status === 'bezahlt') - Number(a.status === 'bezahlt'))
+      const gegentorPosten = new Map<string, Strafe>()
+      if (gegentore > 0) {
+        for (const s of vomSpiel('gegentor')) {
+          const id = s.spielerIds[0]
+          if (kader.includes(id) && !gegentorPosten.has(id)) gegentorPosten.set(id, s)
+        }
+      }
+      const torPosten = tore > 0 ? vomSpiel('tor')[0] : undefined
+      const bleibt = new Set([...gegentorPosten.values(), torPosten].filter((s) => s !== undefined).map((s) => s.id))
 
       // Die Tore zahlt der Trainer — auch wenn ein Admin abrechnet.
       const trainer = speicher.daten.spieler
         .filter((p) => p.rolle === 'Trainer' && p.aktiv !== false)
         .sort((a, b) => a.name.localeCompare(b.name))[0]
-      if (tore > 0 && !trainer) throw new Error('Für die Tore fehlt ein Trainer im Kader.')
+      if (tore > 0 && !torPosten && !trainer) throw new Error('Für die Tore fehlt ein Trainer im Kader.')
 
-      const neu: Strafe[] = []
-      if (gegentore > 0) kaderIds.forEach((id) => neu.push({
-        id: neueId(), spielerIds: [id], typId: 'gegentor',
-        betrag: gegentore * (KATALOG_BY.gegentor.satz ?? 0.5),
-        einheit: 'eur', datum, status: 'offen',
+      const posten = (typId: string, spielerId: string, betrag: number, notiz: string): Strafe => ({
+        id: neueId(), spielerIds: [spielerId], typId, betrag,
+        einheit: 'eur', datum: spiel.datum, status: 'offen',
         bestaetigtVon: [sitzung.spielerId], angelegtVon: sitzung.spielerId,
-        notiz: gegentore + (gegentore === 1 ? ' Gegentor gg. ' : ' Gegentore gg. ') + gegner,
-      }))
-      if (tore > 0 && trainer) neu.push({
-        id: neueId(), spielerIds: [trainer.id], typId: 'tor',
-        betrag: tore * (KATALOG_BY.tor.satz ?? 1),
-        einheit: 'eur', datum, status: 'offen',
-        bestaetigtVon: [sitzung.spielerId], angelegtVon: sitzung.spielerId,
-        notiz: tore + (tore === 1 ? ' Tor gg. ' : ' Tore gg. ') + gegner,
+        notiz, spielId,
       })
+      const neu: Strafe[] = []
+      if (gegentore > 0) kader.forEach((id) => {
+        if (!gegentorPosten.has(id)) neu.push(posten('gegentor', id, betragGeg, notizGeg))
+      })
+      if (tore > 0 && !torPosten && trainer) neu.push(posten('tor', trainer.id, betragTor, notizTor))
 
-      const bekannt = speicher.daten.spiele.find((s) => s.datum === datum && s.gegner === gegner)
       speicher.daten = {
         ...speicher.daten,
-        strafen: speicher.daten.strafen.concat(neu),
-        spiele: bekannt
-          ? speicher.daten.spiele.map((s) => (s.id === bekannt.id ? { ...s, tore, gegentore } : s))
-          : speicher.daten.spiele.concat([{ id: neueId(), datum, gegner, heim: true, tore, gegentore }]),
+        strafen: alt
+          .filter((s) => s.spielId !== spielId || (s.typId !== 'gegentor' && s.typId !== 'tor') || bleibt.has(s.id))
+          .map((s): Strafe => {
+            if (!bleibt.has(s.id)) return s
+            return s.typId === 'tor'
+              ? { ...s, betrag: betragTor, notiz: notizTor, datum: spiel.datum }
+              : { ...s, betrag: betragGeg, notiz: notizGeg, datum: spiel.datum }
+          })
+          .concat(neu),
+        spiele: speicher.daten.spiele.map((s) => (s.id === spielId ? { ...s, tore, gegentore, kader } : s)),
       }
     },
   }

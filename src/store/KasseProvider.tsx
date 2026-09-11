@@ -184,16 +184,20 @@ export function KasseProvider({ sitzung, children }: { sitzung: Sitzung; childre
     },
 
     spieltagAbrechnen(abrechnung: SpieltagAbrechnung) {
-      const { tore, gegentore, kaderIds } = abrechnung
+      const { spielId, tore, gegentore, kaderIds } = abrechnung
       if (!kaderIds.length) return melde('Ohne Kader keine Abrechnung.')
-      if (!tore && !gegentore) return melde('0:0 — nichts zu holen. Ärgerlich für die Kasse.')
+      const spiel = daten.spiele.find((s) => s.id === spielId)
+      if (!spiel) return melde('Dieses Spiel gibt es nicht mehr.')
 
       const summe = gegentore * (KATALOG_BY.gegentor.satz ?? 0.5) * kaderIds.length
         + tore * (KATALOG_BY.tor.satz ?? 1)
-      void mutieren(
-        () => repository.spieltagAbrechnen(abrechnung),
-        fmtEur(summe) + ' abgerechnet. ' + (gegentore ? 'Hinten bitte mal aufpassen.' : 'Saubere Kiste hinten.'),
-      )
+      // Auch ein 0:0 wird gespeichert: Ergebnis und Kader gehören zum Spiel.
+      const text = spiel.tore !== undefined
+        ? 'Spieltag geändert. Die Kasse ist angepasst.'
+        : !tore && !gegentore
+          ? '0:0 — nichts zu holen. Ärgerlich für die Kasse.'
+          : fmtEur(summe) + ' abgerechnet. ' + (gegentore ? 'Hinten bitte mal aufpassen.' : 'Saubere Kiste hinten.')
+      void mutieren(() => repository.spieltagAbrechnen(abrechnung), text)
     },
 
     zahlungMelden(art) {

@@ -83,6 +83,7 @@ export function lokaleVerwaltung(sitzung: Sitzung): VerwaltungRepository {
             ? { ...s, spielerIds: s.spielerIds.filter((x) => x !== id),
                 bestaetigtVon: s.bestaetigtVon.filter((x) => x !== id) }
             : s)),
+        spiele: speicher.daten.spiele.map((s) => ({ ...s, kader: s.kader?.filter((x) => x !== id) })),
       }
       speicher.geheim.delete(id)
       return eintraege
@@ -131,7 +132,12 @@ export function lokaleVerwaltung(sitzung: Sitzung): VerwaltungRepository {
 
     async spielLoeschen(id: string) {
       pruefen()
-      speicher.daten = { ...speicher.daten, spiele: speicher.daten.spiele.filter((s) => s.id !== id) }
+      speicher.daten = {
+        ...speicher.daten,
+        spiele: speicher.daten.spiele.filter((s) => s.id !== id),
+        // Die Posten bleiben stehen, hängen aber an keinem Spiel mehr.
+        strafen: speicher.daten.strafen.map((s) => (s.spielId === id ? { ...s, spielId: undefined } : s)),
+      }
     },
 
     async logoSetzen(gegner: string, png: Blob | null) {

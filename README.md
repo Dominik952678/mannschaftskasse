@@ -65,6 +65,8 @@ und bei 10 000 Möglichkeiten wäre ein Hash ohnehin in Sekunden durchprobiert.
      abhaken und wieder rausnehmen
    - `supabase/migrations/0007_spieler_loeschen.sql` — Spieler aus dem Kader
      löschen
+   - `supabase/migrations/0008_spieltag_aendern.sql` — Spieltag aus dem
+     Spielplan wählen und nachträglich ändern
    - `supabase/seed.sql` — vorher Kader und Spielplan eintragen; Zeilen mit
      `BEISPIEL` werden übersprungen. Am Ende steht die Liste der Codes zum
      Weiterleiten.
@@ -171,6 +173,17 @@ auf 256 px und macht ein PNG daraus, bevor es in den Storage-Bucket
 dürfen nur Admins (Policies auf `storage.objects`). Alle Angemeldeten sehen
 die Logos auf der Startseite und beim Spieltag. Ergebnisse trägt weiterhin
 der Spieltag ein, zusammen mit den Strafen.
+
+Der **Spieltag** wählt sein Spiel aus diesem Spielplan — was dort nicht
+steht, lässt sich nicht abrechnen. Ergebnis und Kader werden am Spiel
+gespeichert (`spiel_kader`), die Posten zeigen auf ihr Spiel
+(`strafen.spiel_id`). Ein abgerechnetes Spiel lässt sich deshalb wieder
+aufrufen und ändern: Wer neu im Kader steht, bekommt seinen Posten, wer raus
+ist, verliert ihn, ein anderes Ergebnis ändert die Beträge. Bezahlte Posten
+bleiben dabei bezahlt, auch wenn sich ihr Betrag ändert — die App nennt
+vorher, wen das betrifft, das Geld klärt der Kassenwart. Wer einen einzelnen
+Gegentor-Posten in der Kasse rausnimmt, nimmt den Mann damit auch aus dem
+Kader des Spiels.
 
 `src/model/berechtigungen.ts` blendet aus, was nicht geht.
 Durchgesetzt wird es in der Datenbank: gelesen wird direkt aus den Tabellen,
