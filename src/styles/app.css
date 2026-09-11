@@ -1,0 +1,275 @@
+/* Mannschaftskasse — Layout der App und die Muster, die auf jedem Screen
+   wiederkehren. Gebaut für das Handy: eine Spalte, die genau den Bildschirm
+   füllt, gescrollt wird nur in der Mitte. */
+
+/* ── Hülle ─────────────────────────────────────────────────────────────── */
+
+.app {
+  position: relative;
+  height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+@media (min-width: 560px) {
+  /* Am Desktop steht die App als Spalte auf der Fläche — kein Gerätemodell,
+     nur eine Kante, damit sie nicht im Hintergrund ausfranst. */
+  .app { box-shadow: 0 0 0 1px var(--color-divider); }
+}
+
+.kopf {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--color-bg);
+}
+.kopf-wappen { flex: none; object-fit: contain; }
+.kopf-titel { font-size: 19px; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; }
+.kopf-unter {
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+.rollen-schild {
+  flex: none;
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 4px 8px; border: 1px solid var(--color-divider);
+  color: var(--color-neutral-700);
+}
+
+.inhalt {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 16px 20px;
+}
+
+/* Die Scrollleiste bleibt unsichtbar — die App ist die einzige Fläche. */
+.tsg-scroll { scrollbar-width: none; }
+.tsg-scroll::-webkit-scrollbar { width: 0; }
+
+.tableiste {
+  flex: none;
+  display: flex;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-bg);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 9px 2px 8px; min-height: 54px;
+  color: var(--color-neutral-700);
+}
+.tab-an { background: var(--color-accent); color: #fff; }
+.tab-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* ── Über der App ──────────────────────────────────────────────────────── */
+
+.sheet-grund {
+  position: absolute; inset: 0; z-index: 80;
+  background: rgba(28, 28, 78, 0.5);
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%;
+  background: var(--color-bg);
+  border-top: 2px solid var(--color-accent);
+  padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+}
+
+.toast {
+  position: absolute; left: 16px; right: 16px; z-index: 90;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  background: var(--color-accent); color: #fff;
+  padding: 11px 14px; font-size: 14px; line-height: 1.35;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Bausteine ─────────────────────────────────────────────────────────── */
+
+.stapel { display: flex; flex-direction: column; gap: 22px; }
+.paar { display: flex; gap: 12px; }
+
+/* Kondensierte Ziffern und Überschriften im Vereinsstil. */
+.cond { font-family: var(--font-heading); font-weight: var(--font-heading-weight); }
+.zahl-gross { font-size: 38px; line-height: 1.05; margin-top: 2px; }
+
+/* Kleines Label über einem Wert. */
+.kicker {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+/* Dasselbe auf den blauen Karten, wo es das Vereinsgelb trägt. */
+.kicker-on-accent {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--color-accent-2);
+}
+.auf-accent { background: var(--color-accent); color: #fff; }
+
+.sec-title { margin: 0; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; }
+.sec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.note { font-size: 11px; color: var(--color-neutral-600); }
+.aktion {
+  font-size: 13px; font-weight: 400; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-accent-700);
+}
+
+.zeile { display: flex; align-items: center; }
+.zeile-name { font-size: 15px; font-weight: 500; line-height: 1.2; }
+.rule-b { border-bottom: 1px solid var(--color-divider); }
+
+.empty {
+  border: 1px dashed var(--color-divider);
+  text-align: center; font-size: 13px; line-height: 1.45;
+  color: var(--color-neutral-600);
+}
+
+/* Auswahl-Kacheln im Strafenkatalog. */
+.kacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kachel {
+  padding: 10px 11px; min-height: 70px;
+  border: 1px solid var(--color-divider);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+}
+.kachel-an { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+
+/* Namensmarken: Kader und ausgewählte Spieler. */
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 11px; font-size: 13px; white-space: nowrap;
+  border: 1px solid var(--color-divider);
+}
+.chip-an { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+
+/* Plus/Minus am Ergebnis — bewusst daumengroß. */
+.stepper {
+  width: 40px; height: 40px; flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; line-height: 1;
+}
+
+.icon-knopf {
+  width: 40px; height: 40px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Antippen ──────────────────────────────────────────────────────────── */
+
+.tap, .btn, .seg-opt, label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.tap { cursor: pointer; }
+
+/* Hover nur dort, wo es wirklich einen Zeiger gibt — sonst bleiben die
+   Zustände nach einem Tap kleben. */
+@media (hover: hover) {
+  .hover-accent-100:hover { background: var(--color-accent-100) !important; }
+  .hover-accent-600:hover { background: var(--color-accent-600) !important; }
+  .hover-neutral-200:hover { background: var(--color-neutral-200) !important; }
+}
+
+/* iOS zoomt beim Fokus in Felder unter 16px. */
+@media (pointer: coarse) {
+  .input { font-size: 16px; }
+}
+
+/* ── Anmeldung ─────────────────────────────────────────────────────────── */
+
+.anmeldung {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: calc(28px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+}
+
+.anmelde-kopf {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.anmelde-titel { font-size: 24px; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; }
+
+.profil-liste { display: flex; flex-direction: column; }
+.profil-zeile {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.profil-kuerzel {
+  width: 38px; height: 38px; flex: none;
+  border: 1px solid var(--color-divider);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--color-accent-800);
+}
+
+/* Vier Kästchen, darüber ein unsichtbares Feld — so tippt man mit der
+   Zifferntastatur des Handys und sieht trotzdem den Entwurf. */
+.code-feld {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  cursor: text;
+}
+.code-input {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  border: 0; padding: 0;
+  font-size: 16px; /* verhindert den iOS-Zoom beim Fokus */
+  background: transparent;
+}
+.code-kaestchen {
+  width: 100%; max-width: 62px; height: 68px;
+  border: 1px solid var(--color-divider);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; line-height: 1;
+  color: var(--color-accent-800);
+}
+.code-aktiv {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.code-status {
+  min-height: 34px;
+  margin-top: 12px;
+  font-size: 12px; line-height: 1.4;
+  text-align: center;
+  color: var(--color-neutral-600);
+}
+
+/* ── Zwischenzustände ──────────────────────────────────────────────────── */
+
+.hinweisschirm {
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.platzhalter {
+  flex: 1;
+  min-height: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; padding: 24px;
+  font-size: 13px; text-align: center;
+  color: var(--color-neutral-600);
+}
