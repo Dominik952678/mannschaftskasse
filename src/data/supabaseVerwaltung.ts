@@ -64,6 +64,15 @@ export function supabaseVerwaltung(): VerwaltungRepository {
       if (error) throw fehler(error)
     },
 
+    async loeschen(id, mitEintraegen) {
+      const { data, error } = await client().rpc('admin_spieler_loeschen', {
+        p_id: id,
+        p_mit_eintraegen: mitEintraegen,
+      })
+      if (error) throw fehler(error)
+      return (data as { eintraege: number }).eintraege
+    },
+
     async codeNeu(id) {
       const { data, error } = await client().rpc('admin_code_neu', { p_id: id })
       if (error) throw fehler(error)

@@ -147,6 +147,13 @@ export function VerwaltungScreen({ zurueck }: { zurueck: () => void }) {
           geraeteAbmelden={() => ausfuehren(
             () => repo.geraeteAbmelden(aktuell.spieler.id),
             (n) => n === 1 ? 'Auf einem Gerät abgemeldet.' : 'Auf ' + n + ' Geräten abgemeldet.')}
+          loeschen={async (mitEintraegen) => {
+            const r = await ausfuehren(
+              () => repo.loeschen(aktuell.spieler.id, mitEintraegen),
+              (n) => vorname(aktuell.spieler.name) + ' ist raus aus dem Kader'
+                + (n > 0 ? ', samt ' + (n === 1 ? 'seinem Eintrag' : 'seinen ' + n + ' Einträgen') : '') + '.')
+            if (r !== undefined) setAnsicht(ZUM_KADER)
+          }}
         />
       )}
     </div>
@@ -248,7 +255,7 @@ function KaderZeile({ eintrag, istIch, oeffnen }: { eintrag: KaderEintrag; istIc
 
 // ── Ein Spieler ───────────────────────────────────────────────────────────
 
-function SpielerAnsicht({ eintrag, frisch, istIch, beschaeftigt, zurueck, speichern, codeNeu, sperreAufheben, geraeteAbmelden }: {
+function SpielerAnsicht({ eintrag, frisch, istIch, beschaeftigt, zurueck, speichern, codeNeu, sperreAufheben, geraeteAbmelden, loeschen }: {
   eintrag: KaderEintrag
   frisch: boolean
   istIch: boolean
@@ -258,11 +265,15 @@ function SpielerAnsicht({ eintrag, frisch, istIch, beschaeftigt, zurueck, speich
   codeNeu: () => Promise<unknown>
   sperreAufheben: () => Promise<unknown>
   geraeteAbmelden: () => Promise<unknown>
+  loeschen: (mitEintraegen: boolean) => Promise<unknown>
 }) {
   const kasse = useKasse()
   const p = eintrag.spieler
+  // Wie viele Strafen den Mann betreffen — dieselbe Zahl, die die Datenbank
+  // in strafe_spieler zählt und an der das Löschen hängt.
+  const eintraege = kasse.daten.strafen.filter((s) => s.spielerIds.includes(p.id)).length
   const [eingabe, setEingabe] = useState<SpielerEingabe>(() => alsEingabe(p))
-  const [rueckfrage, setRueckfrage] = useState<'code' | 'geraete' | null>(null)
+  const [rueckfrage, setRueckfrage] = useState<'code' | 'geraete' | 'loeschen' | null>(null)
   const [formFehler, setFormFehler] = useState<string | null>(null)
 
   const gesperrtBis = eintrag.gesperrtBis
@@ -365,7 +376,76 @@ function SpielerAnsicht({ eintrag, frisch, istIch, beschaeftigt, zurueck, speich
           {beschaeftigt ? 'Speichert …' : 'Speichern'}
         </button>
       </Sektion>
+
+      {!istIch && (
+        <AusDemKader
+          name={p.name}
+          eintraege={eintraege}
+          ausgetreten={p.aktiv === false}
+          offen={rueckfrage === 'loeschen'}
+          beschaeftigt={beschaeftigt}
+          fragen={() => setRueckfrage('loeschen')}
+          abbrechen={() => setRueckfrage(null)}
+          loeschen={() => { setRueckfrage(null); void loeschen(eintraege > 0) }}
+        />
+      )}
     </>
+  )
+}
+
+/**
+ * Der letzte Block auf der Spielerseite: endgültig raus aus dem Kader.
+ *
+ * Wer Einträge in der Kasse hat, ist der Regelfall für „ausgetreten“ —
+ * dann bleibt die Historie stehen. Löschen geht trotzdem, aber erst nach
+ * einer Rückfrage, die sagt, was dabei mit verschwindet.
+ */
+function AusDemKader({ name, eintraege, ausgetreten, offen, beschaeftigt, fragen, abbrechen, loeschen }: {
+  name: string
+  eintraege: number
+  ausgetreten: boolean
+  offen: boolean
+  beschaeftigt: boolean
+  fragen: () => void
+  abbrechen: () => void
+  loeschen: () => void
+}) {
+  if (!offen) {
+    return (
+      <Hinweiszeile
+        text={eintraege === 0
+          ? `${vorname(name)} steht in keiner Strafe. Lässt sich rückstandslos entfernen.`
+          : `${vorname(name)} hat ${eintraege === 1 ? 'einen Eintrag' : eintraege + ' Einträge'} in der Kasse.`}
+        knopf="Aus dem Kader"
+        beschaeftigt={beschaeftigt}
+        onClick={fragen}
+      />
+    )
+  }
+
+  return (
+    <Karte style={{ padding: '12px 14px', borderColor: 'var(--color-accent)' }}>
+      <div style={{ fontSize: 13, lineHeight: 1.45, marginBottom: 10 }}>
+        {eintraege === 0 ? (
+          <>{name} wird gelöscht, mit Code und Anmeldung. Kommt nicht wieder.</>
+        ) : (
+          <>
+            {name} wird gelöscht — und mit ihm {eintraege === 1 ? 'sein Eintrag' : 'seine ' + eintraege + ' Einträge'}.
+            Summen und Schandmauer ändern sich damit rückwirkend; an geteilten Strafen
+            bleibt der Rest der Mannschaft stehen.
+            {!ausgetreten && (
+              <> Soll seine Historie erhalten bleiben, setz ihn oben stattdessen auf <em>ausgetreten</em>.</>
+            )}
+          </>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn btn-primary" style={{ flex: 1 }} disabled={beschaeftigt} onClick={loeschen}>
+          {eintraege === 0 ? 'Ja, löschen' : 'Ja, samt Einträgen'}
+        </button>
+        <button className="btn btn-secondary" onClick={abbrechen}>Abbrechen</button>
+      </div>
+    </Karte>
   )
 }
 

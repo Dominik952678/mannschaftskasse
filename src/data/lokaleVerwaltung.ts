@@ -60,6 +60,34 @@ export function lokaleVerwaltung(sitzung: Sitzung): VerwaltungRepository {
       }
     },
 
+    async loeschen(id: string, mitEintraegen: boolean) {
+      pruefen()
+      if (id === sitzung.spielerId) throw new Error('Dich selbst kannst du nicht löschen.')
+      const p = speicher.daten.spieler.find((x) => x.id === id)
+      if (!p) throw new Error('Diesen Spieler gibt es nicht mehr.')
+
+      const eintraege = speicher.daten.strafen.filter((s) => s.spielerIds.includes(id)).length
+      if (eintraege > 0 && !mitEintraegen) {
+        throw new Error(
+          `${p.name} hat ${eintraege} Einträge in der Kasse. Entweder auf ausgetreten setzen `
+          + '— dann bleibt alles stehen — oder ausdrücklich samt Einträgen löschen.')
+      }
+
+      speicher.daten = {
+        ...speicher.daten,
+        spieler: speicher.daten.spieler.filter((x) => x.id !== id),
+        strafen: speicher.daten.strafen
+          // Was nur ihn betraf, fliegt raus; Geteiltes bleibt für die anderen.
+          .filter((s) => !(s.spielerIds.includes(id) && s.spielerIds.length === 1))
+          .map((s) => (s.spielerIds.includes(id)
+            ? { ...s, spielerIds: s.spielerIds.filter((x) => x !== id),
+                bestaetigtVon: s.bestaetigtVon.filter((x) => x !== id) }
+            : s)),
+      }
+      speicher.geheim.delete(id)
+      return eintraege
+    },
+
     async codeNeu(id: string) {
       pruefen()
       const code = codeGenerieren()

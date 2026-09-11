@@ -63,6 +63,8 @@ und bei 10 000 Möglichkeiten wäre ein Hash ohnehin in Sekunden durchprobiert.
    - `supabase/migrations/0005_spielplan.sql` — Spielplan und Gegner-Logos
    - `supabase/migrations/0006_loeschen_und_einzeln.sql` — Posten einzeln
      abhaken und wieder rausnehmen
+   - `supabase/migrations/0007_spieler_loeschen.sql` — Spieler aus dem Kader
+     löschen
    - `supabase/seed.sql` — vorher Kader und Spielplan eintragen; Zeilen mit
      `BEISPIEL` werden übersprungen. Am Ende steht die Liste der Codes zum
      Weiterleiten.
@@ -142,10 +144,24 @@ sie nicht auf. Dort:
 - Code zeigen, **weiterleiten** (Teilen-Menü des Handys, sonst kopieren)
   und neu würfeln
 - Sperre nach Fehlversuchen aufheben, Spieler auf allen Geräten abmelden
+- Spieler endgültig aus dem Kader löschen (siehe unten)
 
 Seine eigene Rolle und seinen Status kann ein Admin nicht ändern, sonst
-sperrt er sich aus. Das erledigt ein anderer Admin oder der SQL-Editor.
-Jede `admin_*`-Funktion prüft selbst, ob der Aufrufer Admin ist.
+sperrt er sich aus. Aus demselben Grund kann er sich auch nicht selbst
+löschen — damit bleibt immer mindestens ein Admin übrig. Beides erledigt
+ein anderer Admin oder der SQL-Editor. Jede `admin_*`-Funktion prüft selbst,
+ob der Aufrufer Admin ist.
+
+**Ausgetreten oder gelöscht?** Für jemanden, der wirklich mal dabei war, ist
+**ausgetreten** (`aktiv = false`) der richtige Weg: Er verschwindet aus allen
+Auswahllisten, seine Einträge bleiben in der Kasse stehen. **Löschen** ist für
+Tippfehler, Testeinträge und Leute, die nie gespielt haben. Steht der Mann in
+keiner Strafe, geht es rückstandslos; sonst fragt die App nach und löscht auf
+ausdrücklichen Wunsch seine Einträge mit — Strafen, die nur ihn betrafen,
+ganz, an geteilten bleibt der Rest der Mannschaft stehen. Summen und
+Schandmauer ändern sich damit rückwirkend. Ein einfaches `delete` auf
+`spieler` täte das nicht: Es ließe die Strafen als Geisterposten zurück, die
+in der Gesamtsumme weiterzählen, aber niemandem mehr gehören.
 
 Im Bereich **Spielplan** legt der Admin Spiele an (Gegner, Datum, Anstoß,
 Heim/Auswärts), ändert und löscht sie und lädt pro Gegner ein Logo hoch.

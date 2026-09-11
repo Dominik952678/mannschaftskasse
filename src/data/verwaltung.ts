@@ -12,6 +12,13 @@ export interface VerwaltungRepository {
   /** Legt an und gibt den frisch gewürfelten Code zurück. */
   anlegen(daten: SpielerDaten): Promise<{ id: string; code: string }>
   aendern(id: string, daten: SpielerDaten): Promise<void>
+  /**
+   * Löscht einen Spieler endgültig. Hat er Einträge in der Kasse, verweigert
+   * die Ablage das — bis `mitEintraegen` ausdrücklich gesetzt ist; dann gehen
+   * Strafen, die nur ihn betrafen, mit raus. Gibt zurück, wie viele es waren.
+   * Für jemanden, dessen Historie bleiben soll, ist `aktiv: false` der Weg.
+   */
+  loeschen(id: string, mitEintraegen: boolean): Promise<number>
   /** Neuer Code; der alte gilt ab sofort nicht mehr. Hebt eine Sperre auf. */
   codeNeu(id: string): Promise<string>
   sperreAufheben(id: string): Promise<void>
